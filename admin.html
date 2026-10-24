@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Olii's Beer · Panel del bar</title>
+<meta name="theme-color" content="#0c0a08">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Lobster&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css?v=7">
+<style>
+  .contenedor { max-width: 560px; margin: 0 auto; padding: 0 16px 40px; }
+  header { display: flex; align-items: center; gap: 10px; padding: 18px 0 6px; }
+  header .marca { font-size: 28px; margin: 0; }
+  header .sub { color: var(--suave); font-size: 13px; }
+  header a { margin-left: auto; font-size: 13px; text-decoration: none; color: var(--texto); white-space: nowrap; }
+
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--ambar); margin: 24px 0 10px; }
+
+  .ahora { display: flex; gap: 12px; align-items: center; background: var(--tarjeta); border: 1px solid var(--fuego);
+    border-radius: var(--radio); padding: 10px; }
+  .ahora img { width: 120px; height: 68px; object-fit: cover; border-radius: 10px; background: #000; flex: none; }
+  .ahora .titulo { font-weight: 800; font-size: 15px; line-height: 1.25; }
+  .ahora .info { flex: 1; min-width: 0; display: grid; gap: 6px; justify-items: start; }
+  .ahora.vacio { color: var(--suave); justify-content: center; padding: 22px; border-style: dashed; border-color: var(--borde); }
+
+  .controles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .controles button { border-radius: var(--radio); padding: 16px 8px; font-size: 17px; }
+  .controles .saltar { grid-column: 1 / -1; font-size: 20px; padding: 20px; }
+
+  ul.lista { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .lista li { display: flex; align-items: center; gap: 10px; background: var(--tarjeta); border: 1px solid var(--borde);
+    border-radius: var(--radio); padding: 8px; }
+  .lista img { width: 80px; height: 45px; object-fit: cover; border-radius: 8px; flex: none; }
+  .lista .info { flex: 1; min-width: 0; display: grid; gap: 4px; justify-items: start; }
+  .lista .titulo { font-size: 13px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .lista .quitar { border: 1px solid var(--borde); background: var(--tarjeta-2); color: var(--texto); border-radius: 12px;
+    padding: 10px 12px; cursor: pointer; font-size: 14px; flex: none; }
+  .lista .quitar:active { background: var(--rojo); }
+  .lista .vacio { color: var(--suave); justify-content: center; padding: 18px; border-style: dashed; }
+
+  .login { min-height: 80vh; display: grid; place-content: center; text-align: center; gap: 14px; }
+  .login .marca { font-size: 56px; margin: 0; }
+  .login input { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 999px; padding: 12px 18px; text-align: center; font-size: 18px; }
+  .login .error { color: #ff9b85; min-height: 1.2em; }
+
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, calc(100% + 40px)); background: var(--crema);
+    color: #1a0d03; font-weight: 600; border-radius: 999px; padding: 10px 18px; transition: transform .25s; z-index: 20; }
+  .toast.ver { transform: translate(-50%, 0); }
+  .toast.error { background: #ffd9d2; }
+</style>
+</head>
+<body>
+<div id="demo" class="aviso-demo" hidden>Modo prueba: funciona con la pantalla TV abierta en este mismo navegador</div>
+
+<div class="contenedor">
+  <section class="login" id="login">
+    <p class="marca">Olii's Beer</p>
+    <p style="margin:0;color:var(--crema);font-size:18px">Panel del bar</p>
+    <input id="clave" type="password" placeholder="Clave del bar">
+    <div><button class="boton" id="entrar">Entrar</button></div>
+    <div class="error" id="error-login"></div>
+  </section>
+
+  <main id="panel" hidden>
+    <header>
+      <div>
+        <p class="marca">Olii's Beer</p>
+        <div class="sub">Panel del bar</div>
+      </div>
+      <a class="boton-sec" id="link-tv" href="bar.html" target="_blank">📺 Pantalla TV</a>
+    </header>
+
+    <h2>Sonando en el TV</h2>
+    <div id="ahora"></div>
+
+    <h2>Controles</h2>
+    <div class="controles">
+      <button class="boton saltar" data-accion="saltar">⏭ Saltar canción</button>
+      <button class="boton-sec" data-accion="pausa">⏸ Pausa</button>
+      <button class="boton-sec" data-accion="seguir">▶ Seguir</button>
+      <button class="boton-sec" data-accion="volumen_menos">🔉 Bajar</button>
+      <button class="boton-sec" data-accion="volumen_mas">🔊 Subir</button>
+    </div>
+
+    <h2 id="titulo-cola">En cola</h2>
+    <ul class="lista" id="cola"></ul>
+  </main>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="config.js?v=7"></script>
+<script src="datos.js?v=7"></script>
+<script>
+  const C = window.ROCKOLA, R = window.Rockola;
+  const $ = s => document.querySelector(s);
+  const el = (tag, clase, texto) => {
+    const e = document.createElement(tag);
+    if (clase) e.className = clase;
+    if (texto != null) e.textContent = texto;
+    return e;
+  };
+
+  let clave = '';
+  try { clave = localStorage.getItem('rockola-clave') || ''; } catch {}
+  $('#clave').value = clave;
+  if (R.demo) { $('#demo').hidden = false; $('#link-tv').href = 'bar.html?demo'; }
+
+  function toast(texto, error) {
+    const t = $('#toast');
+    t.textContent = texto;
+    t.classList.toggle('error', !!error);
+    t.classList.add('ver');
+    clearTimeout(toast.t);
+    toast.t = setTimeout(() => t.classList.remove('ver'), 2000);
+  }
+
+  // ---- Entrar con la clave del bar ----
+  async function entrar() {
+    $('#error-login').textContent = '';
+    clave = $('#clave').value.trim();
+    try {
+      if (!(await R.verificarClave(clave))) throw new Error('Clave incorrecta');
+    } catch (err) {
+      $('#error-login').textContent = err.message;
+      return;
+    }
+    try { localStorage.setItem('rockola-clave', clave); } catch {}
+    $('#login').hidden = true;
+    $('#panel').hidden = false;
+    refrescar();
+    R.escuchar(refrescar, 3000);
+  }
+  $('#entrar').onclick = entrar;
+  $('#clave').addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
+  if (R.demo) entrar();
+
+  // ---- Controles: le mandan la orden a la pantalla del TV ----
+  const avisos = {
+    saltar: '⏭ Saltando…', pausa: '⏸ Pausado', seguir: '▶ Sigue sonando',
+    volumen_mas: '🔊 Volumen +', volumen_menos: '🔉 Volumen −'
+  };
+  for (const b of document.querySelectorAll('[data-accion]')) {
+    b.onclick = async () => {
+      b.disabled = true;
+      try {
+        await R.comandar(b.dataset.accion, clave);
+        toast(avisos[b.dataset.accion]);
+        if (b.dataset.accion === 'saltar') setTimeout(refrescar, 2500);
+      } catch (err) {
+        toast(err.message, true);
+      }
+      b.disabled = false;
+    };
+  }
+
+  // ---- Lo que suena y la cola ----
+  async function refrescar() {
+    let ahora = null, cola = [];
+    try { [ahora, cola] = await Promise.all([R.ahora(), R.cola()]); } catch { return; }
+
+    const caja = $('#ahora');
+    caja.replaceChildren();
+    if (ahora && ahora.titulo) {
+      const tarjeta = el('div', 'ahora');
+      const img = new Image();
+      img.alt = '';
+      if (ahora.video_id) img.src = R.miniatura(ahora.video_id);
+      const info = el('div', 'info');
+      info.append(el('div', 'titulo', ahora.titulo),
+        el('span', 'chip-mesa' + (ahora.automatica ? '' : ' mia'),
+          ahora.automatica ? 'Automática · mismo género' : 'Pedida por la mesa ' + ahora.mesa));
+      tarjeta.append(img, info);
+      caja.append(tarjeta);
+    } else {
+      caja.append(el('div', 'ahora vacio', 'Nada sonando. ¿Está abierta la pantalla del TV?'));
+    }
+
+    const espera = cola.filter(p => p.estado === 'cola');
+    $('#titulo-cola').textContent = espera.length ? 'En cola (' + espera.length + ')' : 'En cola';
+    const lista = $('#cola');
+    lista.replaceChildren();
+    if (!espera.length) lista.append(el('li', 'vacio', 'No hay canciones pedidas'));
+    for (const p of espera) {
+      const li = el('li');
+      const img = new Image();
+      img.src = R.miniatura(p.video_id);
+      img.alt = '';
+      const info = el('div', 'info');
+      info.append(el('div', 'titulo', p.titulo), el('span', 'chip-mesa', 'Mesa ' + p.mesa));
+      const quitar = el('button', 'quitar', '✕ Quitar');
+      quitar.onclick = async () => {
+        quitar.disabled = true;
+        try { await R.marcar(p.id, 'saltado', clave); toast('Canción quitada'); }
+        catch (err) { toast(err.message, true); quitar.disabled = false; }
+        refrescar();
+      };
+      li.append(img, info, quitar);
+      lista.append(li);
+    }
+  }
+</script>
+</body>
+</html>

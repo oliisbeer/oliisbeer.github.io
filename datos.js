@@ -23,6 +23,12 @@
   function guardarDemo(lista) {
     try { localStorage.setItem(CLAVE_DEMO, JSON.stringify(lista.slice(-200))); } catch {}
   }
+  function leerLS(clave, porDefecto) {
+    try { const v = JSON.parse(localStorage.getItem(clave)); return v == null ? porDefecto : v; } catch { return porDefecto; }
+  }
+  function guardarLS(clave, valor) {
+    try { localStorage.setItem(clave, JSON.stringify(valor)); } catch {}
+  }
 
   async function rest(ruta, opciones = {}) {
     const r = await fetch(C.supabaseUrl.replace(/\/$/, '') + '/rest/v1/' + ruta, {
@@ -198,6 +204,41 @@
         method: 'POST',
         body: JSON.stringify({ p_id: id, p_estado: estado, p_clave: clave })
       });
+    },
+
+    // ---- Panel del administrador → pantalla del TV ----
+    // El panel deja una orden (saltar, pausa…) y el TV la recoge y la cumple
+    async comandar(accion, clave) {
+      if (demo) {
+        const lista = leerLS('rockola-demo-comandos', []);
+        lista.push({ id: Date.now(), accion });
+        guardarLS('rockola-demo-comandos', lista.slice(-50));
+        return;
+      }
+      await rest('rpc/bar_comando', { method: 'POST', body: JSON.stringify({ p_clave: clave, p_accion: accion }) });
+    },
+
+    async comandosDesde(id) {
+      if (demo) return leerLS('rockola-demo-comandos', []).filter(c => c.id > id);
+      return rest('comandos?select=id,accion&id=gt.' + id + '&order=id.asc');
+    },
+
+    // Lo que está sonando en el TV (pedida o automática), para el panel y los clientes
+    async publicarAhora(info, clave) {
+      if (demo) { guardarLS('rockola-demo-ahora', info); return; }
+      await rest('rpc/bar_ahora', {
+        method: 'POST',
+        body: JSON.stringify({
+          p_clave: clave, p_video_id: info.video_id || null, p_titulo: info.titulo || null,
+          p_mesa: info.mesa || null, p_automatica: !!info.automatica
+        })
+      });
+    },
+
+    async ahora() {
+      if (demo) return leerLS('rockola-demo-ahora', null);
+      const filas = await rest('ahora?select=video_id,titulo,mesa,automatica');
+      return filas && filas.length ? filas[0] : null;
     },
 
     async verificarClave(clave) {

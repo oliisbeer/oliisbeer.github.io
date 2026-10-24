@@ -3,144 +3,71 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Olii's Beer · Rockola</title>
+<title>Olii's Beer · Pantalla TV</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Lobster&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css?v=6">
+<link rel="stylesheet" href="estilos.css?v=7">
 <style>
+  /* Pantalla del TV: solo el video. Todo se maneja desde admin.html */
   html, body { height: 100%; }
-  body { display: flex; flex-direction: column; overflow: hidden; }
+  body { overflow: hidden; background: #000; }
+  body.iniciada { cursor: none; }
 
-  .barra { display: flex; align-items: center; gap: 14px; padding: 14px 22px; }
-  .barra .marca { font-size: 32px; margin: 0; }
-  .barra .acciones { margin-left: auto; display: flex; gap: 8px; }
-  .barra .logo { width: 48px; height: 48px; }
-
-  .principal { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 380px; gap: 18px; padding: 0 22px 18px; }
-
-  .escenario { display: flex; flex-direction: column; min-height: 0; gap: 14px; }
-  .video { position: relative; flex: 1; min-height: 0; background: #000; border-radius: 20px; overflow: hidden; border: 1px solid var(--borde); }
+  .video { position: fixed; inset: 0; background: #000; }
   .video #reproductor, .video iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* Capa transparente: nadie toca el video por accidente y YouTube no muestra sus menús */
+  .capa { position: absolute; inset: 0; z-index: 2; }
+
   .esperando {
-    position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px;
+    position: absolute; inset: 0; z-index: 3; display: grid; place-content: center; text-align: center; gap: 12px;
     background: radial-gradient(circle at 50% 40%, rgba(232,100,28,.25), #000 70%);
   }
-  .esperando .marca { font-size: 64px; }
-  .esperando p { color: var(--crema); font-size: 22px; margin: 0; }
+  .esperando .marca { font-size: 80px; margin: 0; }
+  .esperando p { color: var(--crema); font-size: 26px; margin: 0; }
+  .ig { font-weight: 800; color: #f77737; font-size: 22px; }
 
-  .ahora { display: flex; align-items: center; gap: 16px; background: var(--tarjeta); border: 1px solid var(--fuego);
-    border-radius: 18px; padding: 14px 18px; }
-  .ahora .etiqueta { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ambar); font-weight: 800; }
-  .ahora .titulo { font-size: 22px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .ahora .info { flex: 1; min-width: 0; }
-  .ahora .chip-mesa { font-size: 16px; padding: 6px 14px; }
-
-  aside { display: flex; flex-direction: column; min-height: 0; background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 20px; }
-  aside h2 { margin: 0; padding: 16px 18px 10px; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ambar); }
-  aside ol { list-style: none; margin: 0; padding: 0 10px 10px; overflow: auto; flex: 1; display: grid; align-content: start; gap: 6px; }
-  aside li { display: flex; align-items: center; gap: 10px; background: var(--tarjeta-2); border-radius: 12px; padding: 8px; }
-  aside li img { width: 72px; height: 40px; object-fit: cover; border-radius: 8px; flex: none; }
-  aside li .info { flex: 1; min-width: 0; }
-  aside li .titulo { font-size: 13px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  aside li .quitar { border: 0; background: transparent; color: var(--suave); font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 8px; }
-  aside li .quitar:hover { background: var(--rojo); color: #fff; }
-  aside .vacio { color: var(--suave); text-align: center; padding: 24px; }
-  aside .pie { border-top: 1px solid var(--borde); padding: 14px 18px; color: var(--crema); font-size: 15px; text-align: center; }
-  .ig-bar { margin-top: 6px; font-weight: 800; color: #f77737; }
-  .esperando .ig-bar { font-size: 20px; }
+  .aviso-demo { position: fixed; top: 0; left: 0; right: 0; z-index: 4; }
 
   .inicio { position: fixed; inset: 0; z-index: 30; display: grid; place-content: center; text-align: center; gap: 16px;
-    background: radial-gradient(circle at 50% 35%, rgba(232,100,28,.35), var(--fondo) 65%); padding: 16px; }
+    background: radial-gradient(circle at 50% 35%, rgba(232,100,28,.35), var(--fondo) 65%), var(--fondo); padding: 16px; }
   .inicio .marca { font-size: 72px; margin: 0; }
   .inicio input { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 999px; padding: 12px 18px; text-align: center; font-size: 18px; }
   .inicio .boton { font-size: 22px; padding: 16px 34px; }
   .inicio .error { color: #ff9b85; min-height: 1.2em; }
-
-  /* Modo TV: solo el video. Los controles aparecen al mover el mouse. */
-  .capa-tv { position: absolute; inset: 0; z-index: 2; display: none; }
-  .boton-controles { position: fixed; right: 18px; bottom: 18px; z-index: 20; display: none;
-    opacity: 0; pointer-events: none; transition: opacity .3s; }
-  body.tv { cursor: none; }
-  body.tv.mostrar { cursor: auto; }
-  body.tv .barra, body.tv aside, body.tv .ahora, body.tv .aviso-demo { display: none !important; }
-  body.tv { overflow: hidden; }
-  body.tv .principal { grid-template-columns: 1fr; padding: 0; gap: 0; height: 100vh; }
-  body.tv .video { border-radius: 0; border: 0; flex: 1; aspect-ratio: auto; }
-  body.tv .capa-tv, body.tv .boton-controles { display: block; }
-  body.tv.mostrar .boton-controles { opacity: 1; pointer-events: auto; }
-
-  @media (max-width: 900px) {
-    body { overflow: auto; }
-    .principal { grid-template-columns: 1fr; }
-    .video { aspect-ratio: 16 / 9; flex: none; }
-    aside { max-height: 60vh; }
-  }
+  .inicio .nota { color: var(--suave); font-size: 15px; max-width: 460px; line-height: 1.5; margin: 8px auto 0; }
+  .inicio .nota a { color: var(--ambar); font-weight: 600; }
 </style>
 </head>
 <body>
 <div id="demo" class="aviso-demo" hidden>Modo prueba: los pedidos solo se ven en este navegador</div>
 
-<div class="barra">
-  <img class="logo" src="logo.png" alt="" onerror="this.remove()">
-  <p class="marca">Olii's Beer</p>
-  <span style="color:var(--suave)">Rockola</span>
-  <div class="acciones">
-    <button class="boton-sec" id="pausa">⏸ Pausa</button>
-    <button class="boton-sec" id="saltar">⏭ Saltar</button>
-    <button class="boton" id="modo-tv">📺 Modo TV</button>
+<div class="video">
+  <div id="reproductor"></div>
+  <div class="capa"></div>
+  <div class="esperando" id="esperando">
+    <p class="marca">Olii's Beer</p>
+    <p>Escanea el QR de tu mesa y pide tu canción 🎵</p>
+    <div class="ig" id="ig"></div>
   </div>
 </div>
 
-<div class="principal">
-  <section class="escenario">
-    <div class="video">
-      <div id="reproductor"></div>
-      <div class="capa-tv" id="capa-tv"></div>
-      <div class="esperando" id="esperando">
-        <p class="marca">Olii's Beer</p>
-        <p>Escanea el QR de tu mesa y pide tu canción 🎵</p>
-        <div id="ig-espera" class="ig-bar"></div>
-      </div>
-    </div>
-    <div class="ahora">
-      <span class="ecualizador" id="eq" hidden><i></i><i></i><i></i></span>
-      <div class="info">
-        <div class="etiqueta" id="etiqueta">Esperando pedidos</div>
-        <div class="titulo" id="titulo-ahora">—</div>
-      </div>
-      <span class="chip-mesa" id="mesa-ahora" hidden></span>
-    </div>
-  </section>
-
-  <aside>
-    <h2 id="titulo-cola">Siguen</h2>
-    <ol id="cola"></ol>
-    <div class="pie">📱 Escanea el QR de tu mesa<div id="ig-bar" class="ig-bar"></div></div>
-  </aside>
-</div>
-
-<button class="boton boton-controles" id="salir-tv">⚙ Controles</button>
-
 <div class="inicio" id="inicio">
   <p class="marca">Olii's Beer</p>
-  <p style="margin:0;color:var(--crema);font-size:20px">Rockola del bar</p>
+  <p style="margin:0;color:var(--crema);font-size:20px">Pantalla del TV</p>
   <input id="clave" type="password" placeholder="Clave del bar" hidden>
   <div><button class="boton" id="arrancar">▶ Iniciar rockola</button></div>
   <div class="error" id="error-inicio"></div>
+  <p class="nota">En el TV solo se verá el video.<br>
+    Para saltar, pausar, cambiar el volumen o quitar canciones, abre el
+    <a id="link-admin" href="admin.html" target="_blank">panel del administrador</a> en tu celular.</p>
 </div>
 
-<script src="config.js?v=6"></script>
-<script src="datos.js?v=6"></script>
+<script src="config.js?v=7"></script>
+<script src="datos.js?v=7"></script>
 <script>
   const C = window.ROCKOLA, R = window.Rockola;
   const $ = s => document.querySelector(s);
-  const el = (tag, clase, texto) => {
-    const e = document.createElement(tag);
-    if (clase) e.className = clase;
-    if (texto != null) e.textContent = texto;
-    return e;
-  };
 
   let player, apiLista = false, iniciada = false, ocupado = false;
   let actual = null;        // pedido que está sonando
@@ -149,23 +76,25 @@
   let generoSemilla = null; // su género: la mezcla no se sale de él (rock no pasa a rap)
   let permitidas = null;    // canciones de la mezcla de ese género (las demás se saltan)
   let autoTitulo = '';
+  let ultimoComando = 0;
   const azar = lista => lista.length ? lista[Math.floor(Math.random() * lista.length)] : null;
   let clave = '';
   try { clave = localStorage.getItem('rockola-clave') || ''; } catch {}
 
-  if (R.demo) $('#demo').hidden = false;
-  else $('#clave').hidden = false;
-  if (C.instagram) {
-    $('#ig-bar').textContent = '📸 Síguenos: @' + C.instagram;
-    $('#ig-espera').textContent = '📸 Síguenos en Instagram: @' + C.instagram;
+  if (R.demo) {
+    $('#demo').hidden = false;
+    $('#link-admin').href = 'admin.html?demo';
+  } else {
+    $('#clave').hidden = false;
   }
+  if (C.instagram) $('#ig').textContent = '📸 Síguenos en Instagram: @' + C.instagram;
   $('#clave').value = clave;
 
   // ---- Reproductor de YouTube ----
   window.onYouTubeIframeAPIReady = () => {
     player = new YT.Player('reproductor', {
       width: '100%', height: '100%',
-      playerVars: { autoplay: 1, playsinline: 1, rel: 0, controls: 0, iv_load_policy: 3 },
+      playerVars: { autoplay: 1, playsinline: 1, rel: 0, controls: 0, iv_load_policy: 3, cc_load_policy: 0 },
       events: {
         onReady: () => { apiLista = true; },
         onStateChange: e => {
@@ -175,10 +104,10 @@
             terminar('hecho');
           }
           if (e.data === YT.PlayerState.PLAYING) {
-            $('#pausa').textContent = '⏸ Pausa';
+            // Sin subtítulos en el TV, aunque el navegador los tenga activados
+            try { player.unloadModule('captions'); player.unloadModule('cc'); } catch {}
             if (enRespaldo) revisarMezcla();
           }
-          if (e.data === YT.PlayerState.PAUSED) $('#pausa').textContent = '▶ Seguir';
         },
         // Video bloqueado o borrado: se salta solo
         onError: () => {
@@ -206,12 +135,50 @@
       try { localStorage.setItem('rockola-clave', clave); } catch {}
     }
     if (!apiLista) { $('#error-inicio').textContent = 'Cargando YouTube… intenta de nuevo en un segundo'; return; }
+    // Las órdenes viejas del panel no se cumplen: solo las que lleguen desde ahora
+    try { const viejos = await R.comandosDesde(0); if (viejos.length) ultimoComando = viejos[viejos.length - 1].id; } catch {}
     $('#inicio').remove();
-    modoTV(true);
+    document.body.classList.add('iniciada');
+    try { document.documentElement.requestFullscreen().catch(() => {}); } catch {}
     iniciada = true;
     siguiente();
     R.escuchar(revisar);
+    setInterval(revisarComandos, 2000);
   };
+
+  // ---- Órdenes del panel del administrador ----
+  async function revisarComandos() {
+    let nuevos;
+    try { nuevos = await R.comandosDesde(ultimoComando); } catch { return; }
+    for (const c of nuevos) {
+      ultimoComando = c.id;
+      if (c.accion === 'saltar') saltar();
+      if (c.accion === 'pausa') player.pauseVideo();
+      if (c.accion === 'seguir') player.playVideo();
+      if (c.accion === 'volumen_mas') player.setVolume(Math.min(100, player.getVolume() + 10));
+      if (c.accion === 'volumen_menos') player.setVolume(Math.max(0, player.getVolume() - 10));
+    }
+  }
+
+  function saltar() {
+    if (actual) terminar('saltado');
+    else if (enRespaldo && !finDeMezcla()) player.nextVideo();
+    else siguiente();
+  }
+
+  // Le cuenta al panel y a los clientes qué está sonando
+  let ultimoAnuncio = '';
+  function anunciar() {
+    const info = actual
+      ? { video_id: actual.video_id, titulo: actual.titulo, mesa: actual.mesa, automatica: false }
+      : enRespaldo && autoTitulo
+        ? { video_id: semilla, titulo: autoTitulo, automatica: true }
+        : {};
+    const texto = JSON.stringify(info);
+    if (texto === ultimoAnuncio) return;
+    ultimoAnuncio = texto;
+    R.publicarAhora(info, clave).catch(err => console.error(err));
+  }
 
   // ---- Cola ----
   async function siguiente() {
@@ -248,7 +215,8 @@
           player.stopVideo();
         }
       }
-      pintar(cola);
+      $('#esperando').hidden = !!(actual || enRespaldo);
+      anunciar();
     } catch (err) {
       console.error(err);
     } finally {
@@ -306,7 +274,7 @@
     }
     semilla = datos.video_id;
     autoTitulo = datos.title || '';
-    $('#titulo-ahora').textContent = autoTitulo;
+    anunciar();
   }
 
   function finDeMezcla() {
@@ -318,81 +286,11 @@
     if (ocupado) return;
     let cola;
     try { cola = await R.cola(); } catch { return; }
-    const hayPedidos = cola.some(p => p.estado === 'cola');
-    // Llegó un pedido y no hay nada sonando (o suena el respaldo): ponerlo ya
-    if (!actual && hayPedidos) return siguiente();
-    pintar(cola);
+    // El panel quitó la canción que sonaba: pasar a la siguiente
+    if (actual && !cola.some(p => p.id === actual.id)) { actual = null; return siguiente(); }
+    // Llegó un pedido y no hay nada sonando (o suena la mezcla automática): ponerlo ya
+    if (!actual && cola.some(p => p.estado === 'cola')) return siguiente();
   }
-
-  function pintar(cola) {
-    const espera = cola.filter(p => p.estado === 'cola');
-
-    $('#esperando').hidden = !!(actual || enRespaldo);
-    $('#eq').hidden = !(actual || enRespaldo);
-    if (actual) {
-      $('#etiqueta').textContent = 'Sonando ahora';
-      $('#titulo-ahora').textContent = actual.titulo;
-      $('#mesa-ahora').textContent = 'Mesa ' + actual.mesa;
-      $('#mesa-ahora').hidden = false;
-    } else {
-      $('#etiqueta').textContent = enRespaldo ? 'Música del bar · del mismo género de lo último pedido' : 'Esperando pedidos';
-      $('#titulo-ahora').textContent = enRespaldo ? (autoTitulo || 'Cargando…') : '—';
-      $('#mesa-ahora').hidden = true;
-    }
-
-    $('#titulo-cola').textContent = espera.length ? 'Siguen (' + espera.length + ')' : 'Siguen';
-    const lista = $('#cola');
-    lista.replaceChildren();
-    if (!espera.length) lista.append(el('li', 'vacio', 'No hay canciones en cola'));
-    for (const p of espera) {
-      const li = el('li');
-      const img = new Image();
-      img.src = R.miniatura(p.video_id);
-      img.alt = '';
-      const info = el('div', 'info');
-      info.append(el('div', 'titulo', p.titulo), el('span', 'chip-mesa', 'Mesa ' + p.mesa));
-      const quitar = el('button', 'quitar', '✕');
-      quitar.title = 'Quitar de la cola';
-      quitar.onclick = async () => {
-        quitar.disabled = true;
-        try { await R.marcar(p.id, 'saltado', clave); } catch (err) { alert(err.message); }
-        revisar();
-      };
-      li.append(img, info, quitar);
-      lista.append(li);
-    }
-  }
-
-  // ---- Modo TV ----
-  function modoTV(activar) {
-    document.body.classList.toggle('tv', activar);
-    document.body.classList.remove('mostrar');
-    try {
-      if (activar && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
-      if (!activar && document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    } catch {}
-  }
-  $('#modo-tv').onclick = () => modoTV(true);
-  $('#salir-tv').onclick = () => modoTV(false);
-  let ocultarBoton;
-  document.addEventListener('mousemove', () => {
-    if (!document.body.classList.contains('tv')) return;
-    document.body.classList.add('mostrar');
-    clearTimeout(ocultarBoton);
-    ocultarBoton = setTimeout(() => document.body.classList.remove('mostrar'), 3000);
-  });
-
-  // ---- Botones ----
-  $('#saltar').onclick = () => {
-    if (actual) terminar('saltado');
-    else if (enRespaldo && !finDeMezcla()) player.nextVideo();
-    else siguiente();
-  };
-  $('#pausa').onclick = () => {
-    if (!player || !player.getPlayerState) return;
-    if (player.getPlayerState() === YT.PlayerState.PLAYING) player.pauseVideo();
-    else player.playVideo();
-  };
 </script>
 </body>
 </html>

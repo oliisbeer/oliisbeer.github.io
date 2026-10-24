@@ -57,3 +57,50 @@ grant select, insert, update on busquedas to anon;
 revoke all on ajustes from anon, authenticated;
 grant execute on function bar_verificar(text) to anon;
 grant execute on function bar_marcar(bigint, text, text) to anon;
+
+-- ===== PANEL DEL ADMINISTRADOR (se agregó después) =====
+-- Órdenes que el panel le manda a la pantalla del TV (saltar, pausa, volumen…)
+create table if not exists comandos (
+  id bigint generated always as identity primary key,
+  accion text not null check (accion in ('saltar', 'pausa', 'seguir', 'volumen_mas', 'volumen_menos')),
+  creado timestamptz not null default now()
+);
+alter table comandos enable row level security;
+create policy "ver comandos" on comandos for select to anon using (creado > now() - interval '1 hour');
+grant select on comandos to anon;
+
+-- Lo que está sonando en el TV (pedida o automática), para el panel y los clientes
+create table if not exists ahora (
+  id int primary key default 1 check (id = 1),
+  video_id text,
+  titulo text,
+  mesa int,
+  automatica boolean not null default false,
+  actualizado timestamptz not null default now()
+);
+alter table ahora enable row level security;
+create policy "ver ahora" on ahora for select to anon using (true);
+grant select on ahora to anon;
+
+create or replace function bar_comando(p_clave text, p_accion text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not bar_verificar(p_clave) then raise exception 'Clave incorrecta'; end if;
+  insert into comandos (accion) values (p_accion);
+end;
+$$;
+
+create or replace function bar_ahora(p_clave text, p_video_id text, p_titulo text, p_mesa int, p_automatica boolean) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not bar_verificar(p_clave) then raise exception 'Clave incorrecta'; end if;
+  insert into ahora (id, video_id, titulo, mesa, automatica, actualizado)
+  values (1, p_video_id, left(p_titulo, 200), p_mesa, p_automatica, now())
+  on conflict (id) do update set video_id = excluded.video_id, titulo = excluded.titulo,
+    mesa = excluded.mesa, automatica = excluded.automatica, actualizado = now();
+end;
+$$;
+
+revoke insert, update, delete on comandos, ahora from anon, authenticated;
+grant execute on function bar_comando(text, text) to anon;
+grant execute on function bar_ahora(text, text, text, int, boolean) to anon;
