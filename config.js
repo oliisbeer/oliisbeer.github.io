@@ -10,7 +10,7 @@ window.ROCKOLA = {
   supabaseKey: "sb_publishable_lfbK-5NP_kHWw7QZaJKvCw_eyx2yJFX",
 
   // Google Cloud → YouTube Data API v3 → Credenciales → Clave de API
-  youtubeKey: "",
+  youtubeKey: "AIzaSyCsPwdfn1wzDvmbfPQ-PYuy3-oipDkTkls",
 
   // Canciones de respaldo cuando nadie ha pedido nada (IDs de videos de YouTube,
   // lo que va después de "watch?v=" en el link). Si queda vacío, hace silencio.
