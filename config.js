@@ -14,8 +14,8 @@ window.ROCKOLA = {
   youtubeKey: "AIzaSyCsPwdfn1wzDvmbfPQ-PYuy3-oipDkTkls",
 
   // Cuando la cola se vacía, suena una mezcla de YouTube parecida a la última
-  // canción de ROCK pedida (lo que no es rock, como salsa o vallenato, se salta solo).
-  // Si todavía nadie ha pedido rock, arranca con una de estas al azar
+  // canción pedida y del MISMO género (si fue rock, no pasa a rap; si fue salsa, sigue salsa).
+  // Si todavía nadie ha pedido nada, arranca con el tema del bar: una de estas al azar
   // (ID del video: lo que va después de "watch?v=" en el link).
   semillas: [
     "T_FkEw27XJ0", // Soda Stereo – De Música Ligera

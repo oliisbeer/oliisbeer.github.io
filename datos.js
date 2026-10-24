@@ -64,6 +64,15 @@
     }));
   }
 
+  // Un video suele tener varias etiquetas (Soda Stereo: rock + pop + latina).
+  // El género principal es la primera de esta lista que tenga: rock gana sobre pop,
+  // y el reguetón (hip hop) no se confunde con salsa o vallenato (solo "latina").
+  const PRIORIDAD_GENEROS = [
+    'Rock_music', 'Hip_hop_music', 'Electronic_music', 'Reggae', 'Rhythm_and_blues', 'Soul_music',
+    'Jazz', 'Country_music', 'Classical_music', 'Christian_music', 'Music_of_Latin_America',
+    'Music_of_Asia', 'Pop_music', 'Independent_music'
+  ];
+
   function enCola(lista) {
     return lista
       .filter(p => p.estado === 'cola' || p.estado === 'sonando')
@@ -162,20 +171,21 @@
       return (filas || []).map(f => f.video_id);
     },
 
-    // De estos videos, cuáles marca YouTube como rock (1 punto de cupo por cada 50)
-    async soloRock(ids) {
-      if (!C.youtubeKey || !ids.length) return new Set(ids);
-      const rock = new Set();
+    // Género principal de cada video según YouTube (1 punto de cupo por cada 50).
+    // Devuelve un Map id → género, o null si no se pudo saber (sin clave o sin cupo).
+    async generos(ids) {
+      if (!C.youtubeKey || !ids.length) return null;
+      const resultado = new Map();
       for (let i = 0; i < ids.length; i += 50) {
         const p = new URLSearchParams({ part: 'topicDetails', id: ids.slice(i, i + 50).join(','), key: C.youtubeKey });
         const d = await (await fetch('https://www.googleapis.com/youtube/v3/videos?' + p)).json();
-        if (d.error) return new Set(ids); // sin cupo: mejor no bloquear la música
+        if (d.error) return null;
         for (const v of d.items || []) {
-          const temas = (v.topicDetails && v.topicDetails.topicCategories) || [];
-          if (temas.some(t => t.endsWith('/Rock_music'))) rock.add(v.id);
+          const temas = ((v.topicDetails && v.topicDetails.topicCategories) || []).map(t => t.split('/').pop());
+          resultado.set(v.id, PRIORIDAD_GENEROS.find(g => temas.includes(g)) || 'otro');
         }
       }
-      return rock;
+      return resultado;
     },
 
     // Solo la pantalla del bar cambia estados (con la clave del bar)

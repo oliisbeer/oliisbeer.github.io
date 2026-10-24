@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Lobster&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css?v=5">
+<link rel="stylesheet" href="estilos.css?v=6">
 <style>
   html, body { height: 100%; }
   body { display: flex; flex-direction: column; overflow: hidden; }
@@ -130,8 +130,8 @@
   <div class="error" id="error-inicio"></div>
 </div>
 
-<script src="config.js?v=5"></script>
-<script src="datos.js?v=5"></script>
+<script src="config.js?v=6"></script>
+<script src="datos.js?v=6"></script>
 <script>
   const C = window.ROCKOLA, R = window.Rockola;
   const $ = s => document.querySelector(s);
@@ -145,8 +145,9 @@
   let player, apiLista = false, iniciada = false, ocupado = false;
   let actual = null;        // pedido que está sonando
   let enRespaldo = false;   // sonando la mezcla automática (nadie ha pedido)
-  let semilla = null;       // última canción de rock pedida: la mezcla se arma parecida a ella
-  let permitidas = null;    // canciones de la mezcla que son rock (las demás se saltan)
+  let semilla = null;       // última canción pedida: la mezcla se arma parecida a ella
+  let generoSemilla = null; // su género: la mezcla no se sale de él (rock no pasa a rap)
+  let permitidas = null;    // canciones de la mezcla de ese género (las demás se saltan)
   let autoTitulo = '';
   const azar = lista => lista.length ? lista[Math.floor(Math.random() * lista.length)] : null;
   let clave = '';
@@ -228,14 +229,14 @@
       } else {
         actual = null;
         if (!semilla) {
-          // Al abrir la pantalla: la última canción de rock que se pidió hoy
-          try {
-            const ultimas = await R.ultimas();
-            const rock = await R.soloRock(ultimas);
-            semilla = ultimas.find(id => rock.has(id)) || null;
-          } catch {}
+          // Al abrir la pantalla: la última canción que se pidió hoy
+          try { await usarDeSemilla((await R.ultimas())[0]); } catch {}
         }
-        semilla = semilla || azar(C.semillas || []);
+        if (!semilla) {
+          // Nadie ha pedido nada: arranca con el tema del bar (rock)
+          semilla = azar(C.semillas || []);
+          generoSemilla = 'Rock_music';
+        }
         if (semilla) {
           // Mezcla de YouTube parecida a la semilla (la posición 0 es esa misma canción)
           enRespaldo = true;
@@ -261,23 +262,40 @@
       const terminada = actual;
       actual = null;
       try { await R.marcar(terminada.id, estado, clave); } catch (err) { console.error(err); }
-      // Solo el rock que sonó completo guía la música automática (no lo que el bar saltó, ni salsa, ni vallenato)
-      if (estado === 'hecho') {
-        try { if ((await R.soloRock([terminada.video_id])).has(terminada.video_id)) semilla = terminada.video_id; } catch {}
-      }
+      // Lo que sonó completo guía la música automática (lo que el bar saltó, no)
+      if (estado === 'hecho') { try { await usarDeSemilla(terminada.video_id); } catch {} }
     }
-    // Si se acabó la mezcla, la siguiente se arma desde la última de rock que sonó (semilla ya la tiene)
+    // Si se acabó la mezcla, la siguiente se arma desde la última que sonó (semilla ya la tiene)
     siguiente();
   }
 
-  // Revisa la canción de la mezcla que empezó: si no es rock, pasa a la siguiente
+  async function usarDeSemilla(id) {
+    if (!id) return;
+    const generos = await R.generos([id]);
+    semilla = id;
+    generoSemilla = generos ? generos.get(id) || null : null;
+  }
+
+  // Revisa la canción de la mezcla que empezó: si es de otro género, pasa a la siguiente
+  const GENEROS_AMBIGUOS = [null, 'otro', 'Music_of_Latin_America', 'Pop_music'];
   let revisandoMezcla = false;
   async function revisarMezcla() {
     if (permitidas === null) {
       if (revisandoMezcla) return;
       revisandoMezcla = true;
-      try { permitidas = await R.soloRock(player.getPlaylist() || []); }
-      catch { permitidas = new Set(player.getPlaylist() || []); }
+      const lista = player.getPlaylist() || [];
+      let generos = null;
+      try { generos = await R.generos(lista); } catch {}
+      // "Latina" y "pop" son etiquetas ambiguas (Cerati sale solo como "latina"):
+      // en ese caso manda el género que más se repite en la mezcla que armó YouTube
+      if (generos && GENEROS_AMBIGUOS.includes(generoSemilla)) {
+        const cuenta = {};
+        for (const g of generos.values()) cuenta[g] = (cuenta[g] || 0) + 1;
+        generoSemilla = Object.keys(cuenta).sort((a, b) => cuenta[b] - cuenta[a])[0] || generoSemilla;
+      }
+      permitidas = new Set(lista.filter(id => !generos || !generoSemilla || generoSemilla === 'otro' || generos.get(id) === generoSemilla));
+      // Si casi nada de la mezcla es del mismo género, mejor que suene la mezcla completa que el silencio
+      if (permitidas.size < 3) permitidas = new Set(lista);
       revisandoMezcla = false;
     }
     if (!enRespaldo) return;
@@ -317,7 +335,7 @@
       $('#mesa-ahora').textContent = 'Mesa ' + actual.mesa;
       $('#mesa-ahora').hidden = false;
     } else {
-      $('#etiqueta').textContent = enRespaldo ? 'Música del bar · parecida a lo último pedido' : 'Esperando pedidos';
+      $('#etiqueta').textContent = enRespaldo ? 'Música del bar · del mismo género de lo último pedido' : 'Esperando pedidos';
       $('#titulo-ahora').textContent = enRespaldo ? (autoTitulo || 'Cargando…') : '—';
       $('#mesa-ahora').hidden = true;
     }
