@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Olii's Beer · Rockola</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Lobster&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css">
+<style>
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; overflow: hidden; }
+
+  .barra { display: flex; align-items: center; gap: 14px; padding: 14px 22px; }
+  .barra .marca { font-size: 32px; margin: 0; }
+  .barra .acciones { margin-left: auto; display: flex; gap: 8px; }
+  .barra .logo { width: 48px; height: 48px; }
+
+  .principal { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 380px; gap: 18px; padding: 0 22px 18px; }
+
+  .escenario { display: flex; flex-direction: column; min-height: 0; gap: 14px; }
+  .video { position: relative; flex: 1; min-height: 0; background: #000; border-radius: 20px; overflow: hidden; border: 1px solid var(--borde); }
+  .video #reproductor, .video iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .esperando {
+    position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px;
+    background: radial-gradient(circle at 50% 40%, rgba(232,100,28,.25), #000 70%);
+  }
+  .esperando .marca { font-size: 64px; }
+  .esperando p { color: var(--crema); font-size: 22px; margin: 0; }
+
+  .ahora { display: flex; align-items: center; gap: 16px; background: var(--tarjeta); border: 1px solid var(--fuego);
+    border-radius: 18px; padding: 14px 18px; }
+  .ahora .etiqueta { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ambar); font-weight: 800; }
+  .ahora .titulo { font-size: 22px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ahora .info { flex: 1; min-width: 0; }
+  .ahora .chip-mesa { font-size: 16px; padding: 6px 14px; }
+
+  aside { display: flex; flex-direction: column; min-height: 0; background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 20px; }
+  aside h2 { margin: 0; padding: 16px 18px 10px; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ambar); }
+  aside ol { list-style: none; margin: 0; padding: 0 10px 10px; overflow: auto; flex: 1; display: grid; align-content: start; gap: 6px; }
+  aside li { display: flex; align-items: center; gap: 10px; background: var(--tarjeta-2); border-radius: 12px; padding: 8px; }
+  aside li img { width: 72px; height: 40px; object-fit: cover; border-radius: 8px; flex: none; }
+  aside li .info { flex: 1; min-width: 0; }
+  aside li .titulo { font-size: 13px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  aside li .quitar { border: 0; background: transparent; color: var(--suave); font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 8px; }
+  aside li .quitar:hover { background: var(--rojo); color: #fff; }
+  aside .vacio { color: var(--suave); text-align: center; padding: 24px; }
+  aside .pie { border-top: 1px solid var(--borde); padding: 14px 18px; color: var(--crema); font-size: 15px; text-align: center; }
+
+  .inicio { position: fixed; inset: 0; z-index: 30; display: grid; place-content: center; text-align: center; gap: 16px;
+    background: radial-gradient(circle at 50% 35%, rgba(232,100,28,.35), var(--fondo) 65%); padding: 16px; }
+  .inicio .marca { font-size: 72px; margin: 0; }
+  .inicio input { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 999px; padding: 12px 18px; text-align: center; font-size: 18px; }
+  .inicio .boton { font-size: 22px; padding: 16px 34px; }
+  .inicio .error { color: #ff9b85; min-height: 1.2em; }
+
+  @media (max-width: 900px) {
+    body { overflow: auto; }
+    .principal { grid-template-columns: 1fr; }
+    .video { aspect-ratio: 16 / 9; flex: none; }
+    aside { max-height: 60vh; }
+  }
+</style>
+</head>
+<body>
+<div id="demo" class="aviso-demo" hidden>Modo prueba: los pedidos solo se ven en este navegador</div>
+
+<div class="barra">
+  <img class="logo" src="logo.png" alt="" onerror="this.remove()">
+  <p class="marca">Olii's Beer</p>
+  <span style="color:var(--suave)">Rockola</span>
+  <div class="acciones">
+    <button class="boton-sec" id="pausa">⏸ Pausa</button>
+    <button class="boton-sec" id="saltar">⏭ Saltar</button>
+  </div>
+</div>
+
+<div class="principal">
+  <section class="escenario">
+    <div class="video">
+      <div id="reproductor"></div>
+      <div class="esperando" id="esperando">
+        <p class="marca">Olii's Beer</p>
+        <p>Escanea el QR de tu mesa y pide tu canción 🎵</p>
+      </div>
+    </div>
+    <div class="ahora">
+      <span class="ecualizador" id="eq" hidden><i></i><i></i><i></i></span>
+      <div class="info">
+        <div class="etiqueta" id="etiqueta">Esperando pedidos</div>
+        <div class="titulo" id="titulo-ahora">—</div>
+      </div>
+      <span class="chip-mesa" id="mesa-ahora" hidden></span>
+    </div>
+  </section>
+
+  <aside>
+    <h2 id="titulo-cola">Siguen</h2>
+    <ol id="cola"></ol>
+    <div class="pie">📱 Escanea el QR de tu mesa</div>
+  </aside>
+</div>
+
+<div class="inicio" id="inicio">
+  <p class="marca">Olii's Beer</p>
+  <p style="margin:0;color:var(--crema);font-size:20px">Rockola del bar</p>
+  <input id="clave" type="password" placeholder="Clave del bar" hidden>
+  <div><button class="boton" id="arrancar">▶ Iniciar rockola</button></div>
+  <div class="error" id="error-inicio"></div>
+</div>
+
+<script src="config.js"></script>
+<script src="datos.js"></script>
+<script>
+  const C = window.ROCKOLA, R = window.Rockola;
+  const $ = s => document.querySelector(s);
+  const el = (tag, clase, texto) => {
+    const e = document.createElement(tag);
+    if (clase) e.className = clase;
+    if (texto != null) e.textContent = texto;
+    return e;
+  };
+
+  let player, apiLista = false, iniciada = false, ocupado = false;
+  let actual = null;        // pedido que está sonando
+  let enRespaldo = false;   // sonando una canción de respaldo
+  let clave = '';
+  try { clave = localStorage.getItem('rockola-clave') || ''; } catch {}
+
+  if (R.demo) $('#demo').hidden = false;
+  else $('#clave').hidden = false;
+  $('#clave').value = clave;
+
+  // ---- Reproductor de YouTube ----
+  window.onYouTubeIframeAPIReady = () => {
+    player = new YT.Player('reproductor', {
+      width: '100%', height: '100%',
+      playerVars: { autoplay: 1, playsinline: 1, rel: 0, controls: 1 },
+      events: {
+        onReady: () => { apiLista = true; },
+        onStateChange: e => {
+          if (e.data === YT.PlayerState.ENDED) terminar('hecho');
+          if (e.data === YT.PlayerState.PLAYING) $('#pausa').textContent = '⏸ Pausa';
+          if (e.data === YT.PlayerState.PAUSED) $('#pausa').textContent = '▶ Seguir';
+        },
+        // Video bloqueado o borrado: se salta solo
+        onError: () => terminar('saltado')
+      }
+    });
+  };
+  const s = document.createElement('script');
+  s.src = 'https://www.youtube.com/iframe_api';
+  document.head.append(s);
+
+  // ---- Arranque (el navegador exige un clic para sonar) ----
+  $('#arrancar').onclick = async () => {
+    $('#error-inicio').textContent = '';
+    if (!R.demo) {
+      clave = $('#clave').value.trim();
+      try {
+        if (!(await R.verificarClave(clave))) throw new Error('Clave incorrecta');
+      } catch (err) {
+        $('#error-inicio').textContent = err.message;
+        return;
+      }
+      try { localStorage.setItem('rockola-clave', clave); } catch {}
+    }
+    if (!apiLista) { $('#error-inicio').textContent = 'Cargando YouTube… intenta de nuevo en un segundo'; return; }
+    $('#inicio').remove();
+    iniciada = true;
+    siguiente();
+    R.escuchar(revisar);
+  };
+
+  // ---- Cola ----
+  async function siguiente() {
+    if (ocupado) return;
+    ocupado = true;
+    try {
+      const cola = await R.cola();
+      // Si la página se recargó a mitad de canción, retoma la que estaba sonando
+      const p = cola.find(x => x.estado === 'sonando') || cola.find(x => x.estado === 'cola');
+      if (p) {
+        if (p.estado !== 'sonando') { await R.marcar(p.id, 'sonando', clave); p.estado = 'sonando'; }
+        actual = p;
+        enRespaldo = false;
+        player.loadVideoById(p.video_id);
+      } else if (C.respaldo.length) {
+        actual = null;
+        enRespaldo = true;
+        player.loadVideoById(C.respaldo[Math.floor(Math.random() * C.respaldo.length)]);
+      } else {
+        actual = null;
+        enRespaldo = false;
+        player.stopVideo();
+      }
+      pintar(cola);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      ocupado = false;
+    }
+  }
+
+  async function terminar(estado) {
+    if (!iniciada) return;
+    if (actual) {
+      try { await R.marcar(actual.id, estado, clave); } catch (err) { console.error(err); }
+      actual = null;
+    }
+    siguiente();
+  }
+
+  async function revisar() {
+    if (ocupado) return;
+    let cola;
+    try { cola = await R.cola(); } catch { return; }
+    const hayPedidos = cola.some(p => p.estado === 'cola');
+    // Llegó un pedido y no hay nada sonando (o suena el respaldo): ponerlo ya
+    if (!actual && hayPedidos) return siguiente();
+    pintar(cola);
+  }
+
+  function pintar(cola) {
+    const espera = cola.filter(p => p.estado === 'cola');
+
+    $('#esperando').hidden = !!(actual || enRespaldo);
+    $('#eq').hidden = !(actual || enRespaldo);
+    if (actual) {
+      $('#etiqueta').textContent = 'Sonando ahora';
+      $('#titulo-ahora').textContent = actual.titulo;
+      $('#mesa-ahora').textContent = 'Mesa ' + actual.mesa;
+      $('#mesa-ahora').hidden = false;
+    } else {
+      $('#etiqueta').textContent = enRespaldo ? 'Música del bar' : 'Esperando pedidos';
+      $('#titulo-ahora').textContent = enRespaldo ? 'Pide tu canción desde el QR de tu mesa' : '—';
+      $('#mesa-ahora').hidden = true;
+    }
+
+    $('#titulo-cola').textContent = espera.length ? 'Siguen (' + espera.length + ')' : 'Siguen';
+    const lista = $('#cola');
+    lista.replaceChildren();
+    if (!espera.length) lista.append(el('li', 'vacio', 'No hay canciones en cola'));
+    for (const p of espera) {
+      const li = el('li');
+      const img = new Image();
+      img.src = R.miniatura(p.video_id);
+      img.alt = '';
+      const info = el('div', 'info');
+      info.append(el('div', 'titulo', p.titulo), el('span', 'chip-mesa', 'Mesa ' + p.mesa));
+      const quitar = el('button', 'quitar', '✕');
+      quitar.title = 'Quitar de la cola';
+      quitar.onclick = async () => {
+        quitar.disabled = true;
+        try { await R.marcar(p.id, 'saltado', clave); } catch (err) { alert(err.message); }
+        revisar();
+      };
+      li.append(img, info, quitar);
+      lista.append(li);
+    }
+  }
+
+  // ---- Botones ----
+  $('#saltar').onclick = () => {
+    if (actual) terminar('saltado');
+    else siguiente();
+  };
+  $('#pausa').onclick = () => {
+    if (!player || !player.getPlayerState) return;
+    if (player.getPlayerState() === YT.PlayerState.PLAYING) player.pauseVideo();
+    else player.playVideo();
+  };
+</script>
+</body>
+</html>

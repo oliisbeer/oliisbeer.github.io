@@ -1,0 +1,78 @@
+:root {
+  --fondo: #0c0a08;
+  --tarjeta: #1a1511;
+  --tarjeta-2: #241c15;
+  --borde: #3a2c1f;
+  --crema: #f6e7c8;
+  --texto: #efe6d8;
+  --suave: #a8998a;
+  --ambar: #f5a524;
+  --fuego: #e8641c;
+  --rojo: #c8321e;
+  --ok: #4cc38a;
+  --radio: 16px;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 500px at 50% -200px, rgba(232, 100, 28, .28), transparent 70%),
+    var(--fondo);
+  background-attachment: fixed;
+  color: var(--texto);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input { font: inherit; color: inherit; }
+
+.marca {
+  font-family: 'Lobster', cursive;
+  color: var(--crema);
+  text-shadow: 0 0 1px var(--rojo), 2px 2px 0 var(--rojo), 0 0 24px rgba(245, 165, 36, .45);
+  letter-spacing: .5px;
+}
+
+.logo {
+  width: 64px; height: 64px; border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 2px var(--fuego), 0 0 22px rgba(232, 100, 28, .55);
+}
+
+.boton {
+  border: 0; cursor: pointer;
+  background: linear-gradient(135deg, var(--ambar), var(--fuego));
+  color: #1a0d03; font-weight: 800;
+  border-radius: 999px; padding: 10px 18px;
+  transition: transform .1s, filter .2s;
+}
+.boton:active { transform: scale(.96); }
+.boton:disabled { filter: grayscale(1) brightness(.6); cursor: default; }
+
+.boton-sec {
+  border: 1px solid var(--borde); background: var(--tarjeta-2);
+  border-radius: 999px; padding: 8px 14px; cursor: pointer; font-weight: 600;
+}
+
+.chip-mesa {
+  display: inline-block; font-size: 12px; font-weight: 800;
+  padding: 3px 9px; border-radius: 999px;
+  background: var(--tarjeta-2); border: 1px solid var(--borde); color: var(--ambar);
+  white-space: nowrap;
+}
+.chip-mesa.mia { background: var(--ambar); color: #1a0d03; border-color: var(--ambar); }
+
+.aviso-demo {
+  background: repeating-linear-gradient(45deg, #3a2a10, #3a2a10 10px, #33240c 10px, #33240c 20px);
+  color: var(--ambar); text-align: center; font-size: 13px; padding: 6px 12px;
+}
+
+.ecualizador { display: inline-flex; gap: 2px; align-items: flex-end; height: 14px; }
+.ecualizador i { width: 3px; background: var(--ambar); animation: eq 1s infinite ease-in-out; }
+.ecualizador i:nth-child(2) { animation-delay: .2s; }
+.ecualizador i:nth-child(3) { animation-delay: .4s; }
+@keyframes eq { 0%, 100% { height: 4px; } 50% { height: 14px; } }
+@media (prefers-reduced-motion: reduce) { .ecualizador i { animation: none; height: 10px; } }

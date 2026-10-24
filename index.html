@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Olii's Beer · Pide tu canción</title>
+<meta name="theme-color" content="#0c0a08">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Lobster&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css">
+<style>
+  .contenedor { max-width: 560px; margin: 0 auto; padding: 0 16px 48px; }
+
+  header { display: flex; align-items: center; gap: 12px; padding: 20px 0 8px; }
+  header .marca { font-size: 30px; margin: 0; line-height: 1; }
+  header .sub { color: var(--suave); font-size: 13px; margin-top: 4px; }
+  header .chip-mesa { margin-left: auto; font-size: 14px; padding: 6px 12px; }
+
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--ambar); margin: 28px 0 10px; }
+  .titular { font-size: 26px; font-weight: 800; margin: 18px 0 12px; line-height: 1.15; }
+  .titular span { color: var(--ambar); }
+
+  form.buscador {
+    display: flex; gap: 8px; background: var(--tarjeta);
+    border: 1px solid var(--borde); border-radius: 999px; padding: 6px;
+    position: sticky; top: 10px; z-index: 5; box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  }
+  form.buscador input {
+    flex: 1; min-width: 0; background: transparent; border: 0; outline: none;
+    padding: 8px 12px; font-size: 16px;
+  }
+  form.buscador input::placeholder { color: var(--suave); }
+
+  ul.lista { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .cancion {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--tarjeta); border: 1px solid var(--borde);
+    border-radius: var(--radio); padding: 8px;
+  }
+  .cancion img { width: 88px; height: 50px; object-fit: cover; border-radius: 10px; flex: none; background: #000; }
+  .cancion .info { flex: 1; min-width: 0; }
+  .cancion .titulo { font-weight: 600; font-size: 14px; line-height: 1.25;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .cancion .canal { color: var(--suave); font-size: 12px; margin-top: 3px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cancion .boton { padding: 8px 14px; font-size: 14px; flex: none; }
+  .cancion.mia { border-color: var(--ambar); }
+  .cancion .pos { width: 22px; text-align: center; color: var(--suave); font-weight: 800; flex: none; }
+
+  .sonando {
+    background: linear-gradient(135deg, rgba(245,165,36,.18), rgba(232,100,28,.08)), var(--tarjeta);
+    border-color: var(--fuego);
+  }
+  .sonando img { width: 110px; height: 62px; }
+
+  .vacio { color: var(--suave); font-size: 14px; text-align: center; padding: 18px; border: 1px dashed var(--borde); border-radius: var(--radio); }
+  .estado-busqueda { color: var(--suave); font-size: 14px; padding: 8px 4px; }
+  .pista { color: var(--suave); font-size: 12.5px; margin: 8px 6px 0; }
+  .pista b { color: var(--crema); font-weight: 600; }
+
+  .mesas { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 16px; }
+  .mesas .boton { padding: 18px 0; font-size: 18px; border-radius: var(--radio); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, calc(100% + 40px));
+    width: calc(100% - 32px); max-width: 520px;
+    background: var(--crema); color: #1a0d03; font-weight: 600;
+    border-radius: var(--radio); padding: 14px 16px; text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,.6); transition: transform .3s; z-index: 20;
+  }
+  .toast.ver { transform: translate(-50%, 0); }
+  .toast.error { background: #ffd9d2; }
+
+  footer { text-align: center; color: var(--suave); font-size: 12px; margin-top: 36px; }
+</style>
+</head>
+<body>
+<div id="demo" class="aviso-demo" hidden>Modo prueba: los pedidos solo se ven en este navegador</div>
+
+<div class="contenedor">
+  <header>
+    <img class="logo" src="logo.png" alt="Olii's Beer" onerror="this.remove()">
+    <div>
+      <p class="marca">Olii's Beer</p>
+      <div class="sub">Buena cerveza, buenos momentos 🍻</div>
+    </div>
+    <span id="mesa" class="chip-mesa mia" hidden></span>
+  </header>
+
+  <!-- Si el link no trae mesa, se elige aquí -->
+  <section id="elegir-mesa" hidden>
+    <p class="titular">¿En qué <span>mesa</span> estás?</p>
+    <div class="mesas" id="mesas"></div>
+  </section>
+
+  <main id="app" hidden>
+    <p class="titular">¿Qué quieres <span>escuchar</span>?</p>
+    <form class="buscador" id="buscador">
+      <input id="q" type="search" placeholder="Canción, artista o link…" autocomplete="off" enterkeyhint="search">
+      <button class="boton" type="submit">Buscar</button>
+    </form>
+    <p class="pista">¿No la encuentras? En YouTube toca <b>Compartir → Copiar enlace</b> y pégalo aquí.</p>
+    <div id="estado-busqueda" class="estado-busqueda" hidden></div>
+    <ul class="lista" id="resultados" style="margin-top:10px"></ul>
+
+    <h2>Sonando ahora</h2>
+    <div id="sonando"></div>
+
+    <h2 id="titulo-cola">En cola</h2>
+    <ul class="lista" id="cola"></ul>
+  </main>
+
+  <footer>📍 Mall Edificio Central Park · Sabaneta</footer>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="config.js"></script>
+<script src="datos.js"></script>
+<script>
+  const C = window.ROCKOLA, R = window.Rockola;
+  const $ = s => document.querySelector(s);
+  const el = (tag, clase, texto) => {
+    const e = document.createElement(tag);
+    if (clase) e.className = clase;
+    if (texto != null) e.textContent = texto;
+    return e;
+  };
+
+  let mesa = parseInt(new URLSearchParams(location.search).get('mesa'), 10);
+  const mesaValida = n => Number.isInteger(n) && n >= 1 && n <= C.mesas;
+  let colaActual = [];
+
+  if (R.demo) $('#demo').hidden = false;
+
+  function toast(texto, error) {
+    const t = $('#toast');
+    t.textContent = texto;
+    t.classList.toggle('error', !!error);
+    t.classList.add('ver');
+    clearTimeout(toast.t);
+    toast.t = setTimeout(() => t.classList.remove('ver'), 3500);
+  }
+
+  function tarjeta(c, extra) {
+    const li = el('li', 'cancion');
+    const img = new Image();
+    img.src = R.miniatura(c.video_id);
+    img.alt = '';
+    img.loading = 'lazy';
+    const info = el('div', 'info');
+    info.append(el('div', 'titulo', c.titulo), el('div', 'canal', c.canal || ''));
+    li.append(img, info);
+    if (extra) li.append(extra);
+    return li;
+  }
+
+  function chipMesa(n) {
+    return el('span', 'chip-mesa' + (n === mesa ? ' mia' : ''), n === mesa ? 'Tu mesa' : 'Mesa ' + n);
+  }
+
+  // ---- Elegir mesa ----
+  function mostrarSelector() {
+    $('#elegir-mesa').hidden = false;
+    for (let n = 1; n <= C.mesas; n++) {
+      const b = el('button', 'boton', 'Mesa ' + n);
+      b.onclick = () => {
+        mesa = n;
+        history.replaceState(null, '', '?mesa=' + n);
+        $('#elegir-mesa').hidden = true;
+        iniciar();
+      };
+      $('#mesas').append(b);
+    }
+  }
+
+  // ---- Buscar y pedir ----
+  $('#buscador').addEventListener('submit', async e => {
+    e.preventDefault();
+    const q = $('#q').value;
+    if (!q.trim()) return;
+    $('#q').blur();
+    const estado = $('#estado-busqueda');
+    estado.hidden = false;
+    estado.textContent = 'Buscando…';
+    $('#resultados').replaceChildren();
+    try {
+      // Si pegaron un link de YouTube, se usa directo (plan B, no gasta cupo)
+      const resultados = R.idDeLink(q) ? [await R.porLink(q)] : await R.buscar(q);
+      if (!resultados.length) {
+        estado.textContent = R.sinYouTube
+          ? 'Modo prueba: busca "queen", "rock", "bon jovi", "despacito"…'
+          : 'No encontramos nada. Prueba con otro nombre.';
+        return;
+      }
+      estado.hidden = true;
+      for (const c of resultados) {
+        const b = el('button', 'boton', 'Pedir');
+        if (colaActual.some(p => p.video_id === c.video_id)) { b.textContent = 'En cola'; b.disabled = true; }
+        b.onclick = () => pedir(c, b);
+        $('#resultados').append(tarjeta(c, b));
+      }
+    } catch (err) {
+      estado.textContent = err.message;
+    }
+  });
+
+  async function pedir(c, boton) {
+    boton.disabled = true;
+    boton.textContent = '…';
+    try {
+      const puesto = await R.pedir(mesa, c);
+      boton.textContent = '✓ Pedida';
+      toast(puesto <= 1 ? '🎵 ¡Listo! Tu canción es la siguiente' : '🎵 ¡Listo! Tu canción va en el puesto ' + puesto);
+      refrescar();
+    } catch (err) {
+      boton.disabled = false;
+      boton.textContent = 'Pedir';
+      toast(err.message, true);
+    }
+  }
+
+  // ---- Cola en vivo ----
+  async function refrescar() {
+    try { colaActual = await R.cola(); } catch { return; }
+    const sonando = colaActual.find(p => p.estado === 'sonando');
+    const espera = colaActual.filter(p => p.estado === 'cola');
+
+    const caja = $('#sonando');
+    caja.replaceChildren();
+    if (sonando) {
+      const eq = el('span', 'ecualizador');
+      eq.append(el('i'), el('i'), el('i'));
+      const lado = el('div');
+      lado.style.cssText = 'display:grid;gap:6px;justify-items:end';
+      lado.append(chipMesa(sonando.mesa), eq);
+      const t = tarjeta(sonando, lado);
+      t.classList.add('sonando');
+      caja.append(t);
+    } else {
+      caja.append(el('div', 'vacio', 'Nada sonando todavía. ¡Pide la primera! 🔥'));
+    }
+
+    $('#titulo-cola').textContent = espera.length ? 'En cola (' + espera.length + ')' : 'En cola';
+    const lista = $('#cola');
+    lista.replaceChildren();
+    if (!espera.length) lista.append(el('li', 'vacio', 'La cola está vacía'));
+    espera.forEach((p, i) => {
+      const t = tarjeta(p, chipMesa(p.mesa));
+      t.prepend(el('span', 'pos', i + 1));
+      if (p.mesa === mesa) t.classList.add('mia');
+      lista.append(t);
+    });
+  }
+
+  function iniciar() {
+    $('#mesa').textContent = 'Mesa ' + mesa;
+    $('#mesa').hidden = false;
+    $('#app').hidden = false;
+    refrescar();
+    R.escuchar(refrescar);
+  }
+
+  if (mesaValida(mesa)) iniciar(); else mostrarSelector();
+</script>
+</body>
+</html>
