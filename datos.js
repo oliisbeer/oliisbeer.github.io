@@ -1,7 +1,8 @@
 // Todo lo que lee o guarda la rockola pasa por aquí (Supabase o modo demo).
 (function () {
   const C = window.ROCKOLA;
-  const demo = !C.supabaseUrl || !C.supabaseKey;
+  // ?demo en el link fuerza el modo prueba (para mostrarla sin tocar la cola real)
+  const demo = !C.supabaseUrl || !C.supabaseKey || new URLSearchParams(location.search).has('demo');
   const CLAVE_DEMO = 'rockola-demo-pedidos';
 
   // Catálogo pequeño para probar sin clave de YouTube
@@ -152,6 +153,29 @@
         await rest('pedidos', { method: 'POST', body: JSON.stringify(pedido) });
       }
       return (await Rockola.cola()).filter(p => p.estado === 'cola').length;
+    },
+
+    // Últimas canciones pedidas que ya sonaron, de la más reciente a la más vieja
+    async ultimas() {
+      if (demo) return leerDemo().filter(p => p.estado === 'hecho').map(p => p.video_id).reverse().slice(0, 10);
+      const filas = await rest('pedidos?select=video_id&estado=eq.hecho&order=id.desc&limit=10');
+      return (filas || []).map(f => f.video_id);
+    },
+
+    // De estos videos, cuáles marca YouTube como rock (1 punto de cupo por cada 50)
+    async soloRock(ids) {
+      if (!C.youtubeKey || !ids.length) return new Set(ids);
+      const rock = new Set();
+      for (let i = 0; i < ids.length; i += 50) {
+        const p = new URLSearchParams({ part: 'topicDetails', id: ids.slice(i, i + 50).join(','), key: C.youtubeKey });
+        const d = await (await fetch('https://www.googleapis.com/youtube/v3/videos?' + p)).json();
+        if (d.error) return new Set(ids); // sin cupo: mejor no bloquear la música
+        for (const v of d.items || []) {
+          const temas = (v.topicDetails && v.topicDetails.topicCategories) || [];
+          if (temas.some(t => t.endsWith('/Rock_music'))) rock.add(v.id);
+        }
+      }
+      return rock;
     },
 
     // Solo la pantalla del bar cambia estados (con la clave del bar)

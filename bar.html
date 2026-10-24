@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Lobster&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css?v=4">
+<link rel="stylesheet" href="estilos.css?v=5">
 <style>
   html, body { height: 100%; }
   body { display: flex; flex-direction: column; overflow: hidden; }
@@ -57,6 +57,19 @@
   .inicio .boton { font-size: 22px; padding: 16px 34px; }
   .inicio .error { color: #ff9b85; min-height: 1.2em; }
 
+  /* Modo TV: solo el video. Los controles aparecen al mover el mouse. */
+  .capa-tv { position: absolute; inset: 0; z-index: 2; display: none; }
+  .boton-controles { position: fixed; right: 18px; bottom: 18px; z-index: 20; display: none;
+    opacity: 0; pointer-events: none; transition: opacity .3s; }
+  body.tv { cursor: none; }
+  body.tv.mostrar { cursor: auto; }
+  body.tv .barra, body.tv aside, body.tv .ahora, body.tv .aviso-demo { display: none !important; }
+  body.tv { overflow: hidden; }
+  body.tv .principal { grid-template-columns: 1fr; padding: 0; gap: 0; height: 100vh; }
+  body.tv .video { border-radius: 0; border: 0; flex: 1; aspect-ratio: auto; }
+  body.tv .capa-tv, body.tv .boton-controles { display: block; }
+  body.tv.mostrar .boton-controles { opacity: 1; pointer-events: auto; }
+
   @media (max-width: 900px) {
     body { overflow: auto; }
     .principal { grid-template-columns: 1fr; }
@@ -75,6 +88,7 @@
   <div class="acciones">
     <button class="boton-sec" id="pausa">⏸ Pausa</button>
     <button class="boton-sec" id="saltar">⏭ Saltar</button>
+    <button class="boton" id="modo-tv">📺 Modo TV</button>
   </div>
 </div>
 
@@ -82,6 +96,7 @@
   <section class="escenario">
     <div class="video">
       <div id="reproductor"></div>
+      <div class="capa-tv" id="capa-tv"></div>
       <div class="esperando" id="esperando">
         <p class="marca">Olii's Beer</p>
         <p>Escanea el QR de tu mesa y pide tu canción 🎵</p>
@@ -105,6 +120,8 @@
   </aside>
 </div>
 
+<button class="boton boton-controles" id="salir-tv">⚙ Controles</button>
+
 <div class="inicio" id="inicio">
   <p class="marca">Olii's Beer</p>
   <p style="margin:0;color:var(--crema);font-size:20px">Rockola del bar</p>
@@ -113,8 +130,8 @@
   <div class="error" id="error-inicio"></div>
 </div>
 
-<script src="config.js?v=4"></script>
-<script src="datos.js?v=4"></script>
+<script src="config.js?v=5"></script>
+<script src="datos.js?v=5"></script>
 <script>
   const C = window.ROCKOLA, R = window.Rockola;
   const $ = s => document.querySelector(s);
@@ -127,7 +144,11 @@
 
   let player, apiLista = false, iniciada = false, ocupado = false;
   let actual = null;        // pedido que está sonando
-  let enRespaldo = false;   // sonando una canción de respaldo
+  let enRespaldo = false;   // sonando la mezcla automática (nadie ha pedido)
+  let semilla = null;       // última canción de rock pedida: la mezcla se arma parecida a ella
+  let permitidas = null;    // canciones de la mezcla que son rock (las demás se saltan)
+  let autoTitulo = '';
+  const azar = lista => lista.length ? lista[Math.floor(Math.random() * lista.length)] : null;
   let clave = '';
   try { clave = localStorage.getItem('rockola-clave') || ''; } catch {}
 
@@ -143,16 +164,26 @@
   window.onYouTubeIframeAPIReady = () => {
     player = new YT.Player('reproductor', {
       width: '100%', height: '100%',
-      playerVars: { autoplay: 1, playsinline: 1, rel: 0, controls: 1 },
+      playerVars: { autoplay: 1, playsinline: 1, rel: 0, controls: 0, iv_load_policy: 3 },
       events: {
         onReady: () => { apiLista = true; },
         onStateChange: e => {
-          if (e.data === YT.PlayerState.ENDED) terminar('hecho');
-          if (e.data === YT.PlayerState.PLAYING) $('#pausa').textContent = '⏸ Pausa';
+          if (e.data === YT.PlayerState.ENDED) {
+            // En la mezcla, YouTube pasa solo a la siguiente; solo al final se arma otra
+            if (enRespaldo && !finDeMezcla()) return;
+            terminar('hecho');
+          }
+          if (e.data === YT.PlayerState.PLAYING) {
+            $('#pausa').textContent = '⏸ Pausa';
+            if (enRespaldo) revisarMezcla();
+          }
           if (e.data === YT.PlayerState.PAUSED) $('#pausa').textContent = '▶ Seguir';
         },
         // Video bloqueado o borrado: se salta solo
-        onError: () => terminar('saltado')
+        onError: () => {
+          if (enRespaldo && !finDeMezcla()) player.nextVideo();
+          else terminar('saltado');
+        }
       }
     });
   };
@@ -175,6 +206,7 @@
     }
     if (!apiLista) { $('#error-inicio').textContent = 'Cargando YouTube… intenta de nuevo en un segundo'; return; }
     $('#inicio').remove();
+    modoTV(true);
     iniciada = true;
     siguiente();
     R.escuchar(revisar);
@@ -193,14 +225,27 @@
         actual = p;
         enRespaldo = false;
         player.loadVideoById(p.video_id);
-      } else if (C.respaldo.length) {
-        actual = null;
-        enRespaldo = true;
-        player.loadVideoById(C.respaldo[Math.floor(Math.random() * C.respaldo.length)]);
       } else {
         actual = null;
-        enRespaldo = false;
-        player.stopVideo();
+        if (!semilla) {
+          // Al abrir la pantalla: la última canción de rock que se pidió hoy
+          try {
+            const ultimas = await R.ultimas();
+            const rock = await R.soloRock(ultimas);
+            semilla = ultimas.find(id => rock.has(id)) || null;
+          } catch {}
+        }
+        semilla = semilla || azar(C.semillas || []);
+        if (semilla) {
+          // Mezcla de YouTube parecida a la semilla (la posición 0 es esa misma canción)
+          enRespaldo = true;
+          permitidas = null;
+          autoTitulo = '';
+          player.loadPlaylist({ list: 'RD' + semilla, listType: 'playlist', index: 1 });
+        } else {
+          enRespaldo = false;
+          player.stopVideo();
+        }
       }
       pintar(cola);
     } catch (err) {
@@ -213,10 +258,42 @@
   async function terminar(estado) {
     if (!iniciada) return;
     if (actual) {
-      try { await R.marcar(actual.id, estado, clave); } catch (err) { console.error(err); }
+      const terminada = actual;
       actual = null;
+      try { await R.marcar(terminada.id, estado, clave); } catch (err) { console.error(err); }
+      // Solo el rock que sonó completo guía la música automática (no lo que el bar saltó, ni salsa, ni vallenato)
+      if (estado === 'hecho') {
+        try { if ((await R.soloRock([terminada.video_id])).has(terminada.video_id)) semilla = terminada.video_id; } catch {}
+      }
     }
+    // Si se acabó la mezcla, la siguiente se arma desde la última de rock que sonó (semilla ya la tiene)
     siguiente();
+  }
+
+  // Revisa la canción de la mezcla que empezó: si no es rock, pasa a la siguiente
+  let revisandoMezcla = false;
+  async function revisarMezcla() {
+    if (permitidas === null) {
+      if (revisandoMezcla) return;
+      revisandoMezcla = true;
+      try { permitidas = await R.soloRock(player.getPlaylist() || []); }
+      catch { permitidas = new Set(player.getPlaylist() || []); }
+      revisandoMezcla = false;
+    }
+    if (!enRespaldo) return;
+    const datos = player.getVideoData() || {};
+    if (!permitidas.has(datos.video_id)) {
+      if (finDeMezcla()) terminar('hecho'); else player.nextVideo();
+      return;
+    }
+    semilla = datos.video_id;
+    autoTitulo = datos.title || '';
+    $('#titulo-ahora').textContent = autoTitulo;
+  }
+
+  function finDeMezcla() {
+    const lista = player.getPlaylist() || [];
+    return player.getPlaylistIndex() >= lista.length - 1;
   }
 
   async function revisar() {
@@ -240,8 +317,8 @@
       $('#mesa-ahora').textContent = 'Mesa ' + actual.mesa;
       $('#mesa-ahora').hidden = false;
     } else {
-      $('#etiqueta').textContent = enRespaldo ? 'Música del bar' : 'Esperando pedidos';
-      $('#titulo-ahora').textContent = enRespaldo ? 'Pide tu canción desde el QR de tu mesa' : '—';
+      $('#etiqueta').textContent = enRespaldo ? 'Música del bar · parecida a lo último pedido' : 'Esperando pedidos';
+      $('#titulo-ahora').textContent = enRespaldo ? (autoTitulo || 'Cargando…') : '—';
       $('#mesa-ahora').hidden = true;
     }
 
@@ -268,9 +345,29 @@
     }
   }
 
+  // ---- Modo TV ----
+  function modoTV(activar) {
+    document.body.classList.toggle('tv', activar);
+    document.body.classList.remove('mostrar');
+    try {
+      if (activar && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+      if (!activar && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    } catch {}
+  }
+  $('#modo-tv').onclick = () => modoTV(true);
+  $('#salir-tv').onclick = () => modoTV(false);
+  let ocultarBoton;
+  document.addEventListener('mousemove', () => {
+    if (!document.body.classList.contains('tv')) return;
+    document.body.classList.add('mostrar');
+    clearTimeout(ocultarBoton);
+    ocultarBoton = setTimeout(() => document.body.classList.remove('mostrar'), 3000);
+  });
+
   // ---- Botones ----
   $('#saltar').onclick = () => {
     if (actual) terminar('saltado');
+    else if (enRespaldo && !finDeMezcla()) player.nextVideo();
     else siguiente();
   };
   $('#pausa').onclick = () => {
