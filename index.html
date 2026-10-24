@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Lobster&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css?v=3">
+<link rel="stylesheet" href="estilos.css?v=4">
 <style>
   .contenedor { max-width: 560px; margin: 0 auto; padding: 0 16px 48px; }
 
@@ -72,7 +72,19 @@
   .toast.ver { transform: translate(-50%, 0); }
   .toast.error { background: #ffd9d2; }
 
-  footer { text-align: center; color: var(--suave); font-size: 12px; margin-top: 36px; }
+  footer { text-align: center; color: var(--suave); font-size: 12px; margin-top: 16px; }
+
+  .instagram {
+    display: flex; align-items: center; gap: 14px; margin-top: 32px; text-decoration: none; color: #fff;
+    background: linear-gradient(120deg, #833ab4, #e1306c 50%, #f77737);
+    border-radius: var(--radio); padding: 14px 16px; box-shadow: 0 8px 28px rgba(225, 48, 108, .35);
+  }
+  .instagram svg { width: 34px; height: 34px; flex: none; }
+  .instagram .txt { flex: 1; min-width: 0; }
+  .instagram .t1 { font-weight: 800; font-size: 16px; }
+  .instagram .t2 { font-size: 13px; opacity: .9; }
+  .instagram .flecha { font-size: 22px; }
+  .instagram-mini { color: inherit; font-weight: 800; }
 </style>
 </head>
 <body>
@@ -111,13 +123,24 @@
     <ul class="lista" id="cola"></ul>
   </main>
 
+  <a class="instagram" id="instagram" target="_blank" rel="noopener">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/>
+    </svg>
+    <div class="txt">
+      <div class="t1">Síguenos en Instagram</div>
+      <div class="t2" id="instagram-usuario"></div>
+    </div>
+    <span class="flecha">→</span>
+  </a>
+
   <footer>📍 Mall Edificio Central Park · Sabaneta</footer>
 </div>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<script src="config.js?v=3"></script>
-<script src="datos.js?v=3"></script>
+<script src="config.js?v=4"></script>
+<script src="datos.js?v=4"></script>
 <script>
   const C = window.ROCKOLA, R = window.Rockola;
   const $ = s => document.querySelector(s);
@@ -133,6 +156,14 @@
   let colaActual = [];
 
   if (R.demo) $('#demo').hidden = false;
+
+  const urlInstagram = 'https://www.instagram.com/' + C.instagram + '/';
+  if (C.instagram) {
+    $('#instagram').href = urlInstagram;
+    $('#instagram-usuario').textContent = '@' + C.instagram + ' · eventos, promos y más 🍻';
+  } else {
+    $('#instagram').hidden = true;
+  }
 
   function toast(texto, error) {
     const t = $('#toast');

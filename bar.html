@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Lobster&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css?v=3">
+<link rel="stylesheet" href="estilos.css?v=4">
 <style>
   html, body { height: 100%; }
   body { display: flex; flex-direction: column; overflow: hidden; }
@@ -47,6 +47,8 @@
   aside li .quitar:hover { background: var(--rojo); color: #fff; }
   aside .vacio { color: var(--suave); text-align: center; padding: 24px; }
   aside .pie { border-top: 1px solid var(--borde); padding: 14px 18px; color: var(--crema); font-size: 15px; text-align: center; }
+  .ig-bar { margin-top: 6px; font-weight: 800; color: #f77737; }
+  .esperando .ig-bar { font-size: 20px; }
 
   .inicio { position: fixed; inset: 0; z-index: 30; display: grid; place-content: center; text-align: center; gap: 16px;
     background: radial-gradient(circle at 50% 35%, rgba(232,100,28,.35), var(--fondo) 65%); padding: 16px; }
@@ -83,6 +85,7 @@
       <div class="esperando" id="esperando">
         <p class="marca">Olii's Beer</p>
         <p>Escanea el QR de tu mesa y pide tu canción 🎵</p>
+        <div id="ig-espera" class="ig-bar"></div>
       </div>
     </div>
     <div class="ahora">
@@ -98,7 +101,7 @@
   <aside>
     <h2 id="titulo-cola">Siguen</h2>
     <ol id="cola"></ol>
-    <div class="pie">📱 Escanea el QR de tu mesa</div>
+    <div class="pie">📱 Escanea el QR de tu mesa<div id="ig-bar" class="ig-bar"></div></div>
   </aside>
 </div>
 
@@ -110,8 +113,8 @@
   <div class="error" id="error-inicio"></div>
 </div>
 
-<script src="config.js?v=3"></script>
-<script src="datos.js?v=3"></script>
+<script src="config.js?v=4"></script>
+<script src="datos.js?v=4"></script>
 <script>
   const C = window.ROCKOLA, R = window.Rockola;
   const $ = s => document.querySelector(s);
@@ -130,6 +133,10 @@
 
   if (R.demo) $('#demo').hidden = false;
   else $('#clave').hidden = false;
+  if (C.instagram) {
+    $('#ig-bar').textContent = '📸 Síguenos: @' + C.instagram;
+    $('#ig-espera').textContent = '📸 Síguenos en Instagram: @' + C.instagram;
+  }
   $('#clave').value = clave;
 
   // ---- Reproductor de YouTube ----

@@ -4,6 +4,7 @@
 window.ROCKOLA = {
   nombre: "Olii's Beer",
   mesas: 5,
+  instagram: "oliisbeercerveceria",
 
   // Supabase → Project Settings → API (la URL y la clave "anon" o "publishable")
   supabaseUrl: "https://gwqadityhvgadixcxviu.supabase.co",
