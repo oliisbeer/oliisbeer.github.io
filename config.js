@@ -6,8 +6,8 @@ window.ROCKOLA = {
   mesas: 5,
 
   // Supabase → Project Settings → API (la URL y la clave "anon" o "publishable")
-  supabaseUrl: "",
-  supabaseKey: "",
+  supabaseUrl: "https://gwqadityhvgadixcxviu.supabase.co",
+  supabaseKey: "sb_publishable_lfbK-5NP_kHWw7QZaJKvCw_eyx2yJFX",
 
   // Google Cloud → YouTube Data API v3 → Credenciales → Clave de API
   youtubeKey: "",

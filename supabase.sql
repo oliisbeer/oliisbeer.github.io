@@ -52,5 +52,8 @@ begin
 end;
 $$;
 
+grant select, insert on pedidos to anon;
+grant select, insert, update on busquedas to anon;
+revoke all on ajustes from anon, authenticated;
 grant execute on function bar_verificar(text) to anon;
 grant execute on function bar_marcar(bigint, text, text) to anon;

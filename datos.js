@@ -79,6 +79,9 @@
       const q = texto.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 100);
       if (!q) return [];
 
+      if (!C.youtubeKey && !demo) {
+        throw new Error('Busca la canción en YouTube, toca Compartir → Copiar enlace y pega el link arriba 👆');
+      }
       if (!C.youtubeKey) {
         const palabras = q.split(' ');
         return CATALOGO_DEMO.filter(c =>
