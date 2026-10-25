@@ -48,7 +48,8 @@
 <script>
   const C = window.ROCKOLA;
   const base = document.getElementById('base');
-  base.value = new URL('index.html', location.href).href;
+  // ?base=… permite sacar los QR de otra dirección (por ejemplo antes de mudar la página)
+  base.value = new URLSearchParams(location.search).get('base') || new URL('./', location.href).href;
 
   function dibujar() {
     const hojas = document.getElementById('hojas');
