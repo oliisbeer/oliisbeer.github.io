@@ -12,7 +12,24 @@
   /* Pantalla del TV: solo el video. Todo se maneja desde admin.html */
   html, body { height: 100%; }
   body { overflow: hidden; background: #000; }
-  body.iniciada { cursor: none; }
+  body.iniciada.completa { cursor: none; }
+  body.iniciada:not(.completa) .capa { cursor: pointer; }
+
+  /* Fuera de pantalla completa: aviso para volver y atajos del teclado */
+  .volver { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 10;
+    background: rgba(12,10,8,.92); border: 1px solid var(--fuego); border-radius: 18px; padding: 12px 20px;
+    text-align: center; color: var(--crema); font-size: 15px; line-height: 1.6; pointer-events: none;
+    box-shadow: 0 8px 30px rgba(0,0,0,.6); }
+  .volver b { color: var(--ambar); }
+  body:not(.iniciada) .volver, body.completa .volver { display: none; }
+  kbd { display: inline-block; min-width: 1.6em; padding: 0 6px; border: 1px solid var(--borde); border-bottom-width: 2px;
+    border-radius: 6px; background: var(--tarjeta-2); font: 600 13px Inter, sans-serif; }
+
+  /* Confirmación corta cuando se usa una tecla */
+  .tecla { position: fixed; top: 28px; right: 28px; z-index: 11; background: rgba(12,10,8,.85); color: var(--crema);
+    border: 1px solid var(--fuego); border-radius: 999px; padding: 10px 18px; font-weight: 800; font-size: 20px;
+    opacity: 0; transition: opacity .25s; pointer-events: none; }
+  .tecla.ver { opacity: 1; }
 
   .video { position: fixed; inset: 0; background: #000; }
   .video #reproductor, .video iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -53,6 +70,12 @@
   </div>
 </div>
 
+<div class="volver">
+  <b>Haz clic en el video o presiona <kbd>F</kbd> para volver a pantalla completa</b><br>
+  <kbd>→</kbd> saltar canción · <kbd>Espacio</kbd> pausa / seguir · <kbd>↑</kbd> <kbd>↓</kbd> volumen
+</div>
+<div class="tecla" id="tecla"></div>
+
 <div class="inicio" id="inicio">
   <p class="marca">Olii’s<span>Beer</span></p>
   <p style="margin:0;color:var(--crema);font-size:20px">Pantalla del TV</p>
@@ -61,7 +84,9 @@
   <div class="error" id="error-inicio"></div>
   <p class="nota">En el TV solo se verá el video.<br>
     Para saltar, pausar, cambiar el volumen o quitar canciones, abre el
-    <a id="link-admin" href="admin.html" target="_blank">panel del administrador</a> en tu celular.</p>
+    <a id="link-admin" href="admin.html" target="_blank">panel del administrador</a> en tu celular,
+    o usa el teclado de este computador: <kbd>→</kbd> saltar · <kbd>Espacio</kbd> pausa · <kbd>↑</kbd> <kbd>↓</kbd> volumen ·
+    <kbd>F</kbd> pantalla completa.</p>
 </div>
 
 <script src="config.js?v=8"></script>
@@ -140,12 +165,48 @@
     try { const viejos = await R.comandosDesde(0); if (viejos.length) ultimoComando = viejos[viejos.length - 1].id; } catch {}
     $('#inicio').remove();
     document.body.classList.add('iniciada');
-    try { document.documentElement.requestFullscreen().catch(() => {}); } catch {}
+    pantallaCompleta();
     iniciada = true;
     siguiente();
     R.escuchar(revisar);
     setInterval(revisarComandos, 2000);
   };
+
+  // ---- Pantalla completa ----
+  // El navegador solo deja entrar con un clic o una tecla, así que después de Esc
+  // se vuelve haciendo clic en el video o presionando F
+  function pantallaCompleta() {
+    if (document.fullscreenElement) return;
+    try { document.documentElement.requestFullscreen().catch(() => {}); } catch {}
+  }
+  const marcarCompleta = () => document.body.classList.toggle('completa', !!document.fullscreenElement);
+  document.addEventListener('fullscreenchange', marcarCompleta);
+  marcarCompleta();
+  document.querySelector('.capa').addEventListener('click', () => { if (iniciada) pantallaCompleta(); });
+
+  // ---- Teclado del computador del TV (lo mismo que el panel del celular) ----
+  function aviso(texto) {
+    const t = $('#tecla');
+    t.textContent = texto;
+    t.classList.add('ver');
+    clearTimeout(aviso.t);
+    aviso.t = setTimeout(() => t.classList.remove('ver'), 1500);
+  }
+  document.addEventListener('keydown', e => {
+    if (!iniciada || e.ctrlKey || e.altKey || e.metaKey) return;
+    const tecla = e.key.toLowerCase();
+    if (tecla === 'f') { pantallaCompleta(); }
+    else if (tecla === 'arrowright' || tecla === 'n') { ejecutar('saltar'); aviso('⏭ Saltando…'); }
+    else if (tecla === ' ' || tecla === 'k') {
+      const pausado = player.getPlayerState() === YT.PlayerState.PAUSED;
+      ejecutar(pausado ? 'seguir' : 'pausa');
+      aviso(pausado ? '▶ Sigue sonando' : '⏸ Pausado');
+    }
+    else if (tecla === 'arrowup') { aviso('🔊 Volumen ' + Math.min(100, player.getVolume() + 10)); ejecutar('volumen_mas'); }
+    else if (tecla === 'arrowdown') { aviso('🔉 Volumen ' + Math.max(0, player.getVolume() - 10)); ejecutar('volumen_menos'); }
+    else return;
+    e.preventDefault();
+  });
 
   // ---- Órdenes del panel del administrador ----
   async function revisarComandos() {
@@ -153,12 +214,16 @@
     try { nuevos = await R.comandosDesde(ultimoComando); } catch { return; }
     for (const c of nuevos) {
       ultimoComando = c.id;
-      if (c.accion === 'saltar') saltar();
-      if (c.accion === 'pausa') player.pauseVideo();
-      if (c.accion === 'seguir') player.playVideo();
-      if (c.accion === 'volumen_mas') player.setVolume(Math.min(100, player.getVolume() + 10));
-      if (c.accion === 'volumen_menos') player.setVolume(Math.max(0, player.getVolume() - 10));
+      ejecutar(c.accion);
     }
+  }
+
+  function ejecutar(accion) {
+    if (accion === 'saltar') saltar();
+    if (accion === 'pausa') player.pauseVideo();
+    if (accion === 'seguir') player.playVideo();
+    if (accion === 'volumen_mas') player.setVolume(Math.min(100, player.getVolume() + 10));
+    if (accion === 'volumen_menos') player.setVolume(Math.max(0, player.getVolume() - 10));
   }
 
   function saltar() {
