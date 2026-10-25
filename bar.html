@@ -6,8 +6,8 @@
 <title>Olii's Beer · Pantalla TV</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Lobster&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css?v=7">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=DM+Serif+Display&family=Oswald:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css?v=8">
 <style>
   /* Pantalla del TV: solo el video. Todo se maneja desde admin.html */
   html, body { height: 100%; }
@@ -21,7 +21,7 @@
 
   .esperando {
     position: absolute; inset: 0; z-index: 3; display: grid; place-content: center; text-align: center; gap: 12px;
-    background: radial-gradient(circle at 50% 40%, rgba(232,100,28,.25), #000 70%);
+    background: radial-gradient(circle at 50% 40%, rgba(232,100,28,.25), #000 70%), #000;
   }
   .esperando .marca { font-size: 80px; margin: 0; }
   .esperando p { color: var(--crema); font-size: 26px; margin: 0; }
@@ -46,14 +46,15 @@
   <div id="reproductor"></div>
   <div class="capa"></div>
   <div class="esperando" id="esperando">
-    <p class="marca">Olii's Beer</p>
+    <p class="marca">Olii’s<span>Beer</span></p>
+    <p class="lema" style="font-size:20px;color:var(--ambar)">Buena cerveza · Buena gente · Buenos momentos</p>
     <p>Escanea el QR de tu mesa y pide tu canción 🎵</p>
     <div class="ig" id="ig"></div>
   </div>
 </div>
 
 <div class="inicio" id="inicio">
-  <p class="marca">Olii's Beer</p>
+  <p class="marca">Olii’s<span>Beer</span></p>
   <p style="margin:0;color:var(--crema);font-size:20px">Pantalla del TV</p>
   <input id="clave" type="password" placeholder="Clave del bar" hidden>
   <div><button class="boton" id="arrancar">▶ Iniciar rockola</button></div>
@@ -63,8 +64,8 @@
     <a id="link-admin" href="admin.html" target="_blank">panel del administrador</a> en tu celular.</p>
 </div>
 
-<script src="config.js?v=7"></script>
-<script src="datos.js?v=7"></script>
+<script src="config.js?v=8"></script>
+<script src="datos.js?v=8"></script>
 <script>
   const C = window.ROCKOLA, R = window.Rockola;
   const $ = s => document.querySelector(s);

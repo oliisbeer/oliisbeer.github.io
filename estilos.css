@@ -29,11 +29,30 @@ body {
 
 button, input { font: inherit; color: inherit; }
 
+/* Letra del logo del bar: "Olii's" grande y "BEER" debajo, entre dos líneas */
 .marca {
-  font-family: 'Lobster', cursive;
+  font-family: 'DM Serif Display', Georgia, serif;
   color: var(--crema);
-  text-shadow: 0 0 1px var(--rojo), 2px 2px 0 var(--rojo), 0 0 24px rgba(245, 165, 36, .45);
-  letter-spacing: .5px;
+  text-shadow: 0 0 18px rgba(245, 140, 36, .55);
+  line-height: 1;
+  display: inline-block;
+  justify-self: center;
+  text-align: center;
+}
+.marca span {
+  display: block;
+  font-size: .42em;
+  letter-spacing: .32em;
+  text-transform: uppercase;
+  margin-top: .12em;
+  padding: .12em 0 .08em .32em;
+  border-top: 2px solid rgba(245, 165, 36, .8);
+  border-bottom: 2px solid rgba(245, 165, 36, .8);
+}
+.lema {
+  font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .12em;
 }
 
 .logo {

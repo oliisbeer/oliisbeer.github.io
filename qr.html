@@ -6,8 +6,8 @@
 <title>Olii's Beer · QR de las mesas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Lobster&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css?v=7">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=DM+Serif+Display&family=Oswald:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css?v=8">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   .controles { max-width: 900px; margin: 0 auto; padding: 20px 16px; display: grid; gap: 10px; }
@@ -44,7 +44,7 @@
 </div>
 <div class="hojas" id="hojas"></div>
 
-<script src="config.js?v=7"></script>
+<script src="config.js?v=8"></script>
 <script>
   const C = window.ROCKOLA;
   const base = document.getElementById('base');
@@ -59,7 +59,7 @@
     for (let n = 1; n <= C.mesas; n++) {
       const t = document.createElement('div');
       t.className = 'tarjeta-qr';
-      t.innerHTML = '<p class="marca">Olii\'s Beer</p><div class="mesa"></div><div class="codigo"></div>' +
+      t.innerHTML = '<p class="marca">Olii’s<span>Beer</span></p><div class="mesa"></div><div class="codigo"></div>' +
         '<div class="llamado">🎵 Escanéame y pide tu canción</div>' +
         '<div class="pasos">Abre la cámara · Busca la canción · Toca "Pedir"</div>';
       t.querySelector('.mesa').textContent = 'Mesa ' + n;
