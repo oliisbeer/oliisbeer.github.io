@@ -276,6 +276,7 @@
           permitidas = null;
           autoTitulo = '';
           player.loadPlaylist({ list: 'RD' + semilla, listType: 'playlist', index: 1 });
+          vigilarMezcla();
         } else {
           enRespaldo = false;
           player.stopVideo();
@@ -318,6 +319,8 @@
       if (revisandoMezcla) return;
       revisandoMezcla = true;
       const lista = player.getPlaylist() || [];
+      // Mezcla todavía sin cargar: no se filtra nada (vigilarMezcla se encarga si falló)
+      if (!lista.length) { revisandoMezcla = false; return; }
       let generos = null;
       try { generos = await R.generos(lista); } catch {}
       // "Latina" y "pop" son etiquetas ambiguas (Cerati sale solo como "latina"):
@@ -341,6 +344,31 @@
     semilla = datos.video_id;
     autoTitulo = datos.title || '';
     anunciar();
+  }
+
+  // A veces YouTube no arma la mezcla y el video se queda quieto. Si a los 8 segundos
+  // no suena, se reintenta con la misma canción, luego con otra de rock, y si nada
+  // funciona suena la canción sola (al terminar se vuelve a intentar la mezcla)
+  let intentosMezcla = 0, vigilante = null;
+  function vigilarMezcla() {
+    clearTimeout(vigilante);
+    vigilante = setTimeout(() => {
+      if (!enRespaldo || actual) return;
+      const estado = player.getPlayerState();
+      const suena = [YT.PlayerState.PLAYING, YT.PlayerState.BUFFERING, YT.PlayerState.PAUSED].includes(estado);
+      if (suena && (player.getPlaylist() || []).length) { intentosMezcla = 0; return; }
+      intentosMezcla++;
+      if (intentosMezcla <= 3) {
+        if (intentosMezcla > 1) { semilla = azar((C.semillas || []).filter(id => id !== semilla)) || semilla; generoSemilla = 'Rock_music'; }
+        permitidas = null;
+        player.loadPlaylist({ list: 'RD' + semilla, listType: 'playlist', index: 1 });
+        vigilarMezcla();
+      } else {
+        intentosMezcla = 0;
+        enRespaldo = false;
+        player.loadVideoById(semilla);
+      }
+    }, 8000);
   }
 
   function finDeMezcla() {
