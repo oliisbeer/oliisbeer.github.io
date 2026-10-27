@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Rockola → app de YouTube del televisor (con la cuenta Premium del bar).
 // Los clientes piden por el QR; esta función manda cada pedido a la fila de YouTube del TV,
 // en orden, y lleva la cuenta de qué está sonando. El panel del bar manda aquí sus órdenes.
@@ -96,11 +97,21 @@ const ACTIVO = [1, 2, 3];
 // ---------- Base de datos (con la llave de servicio, que solo vive aquí) ----------
 const env = (k) => (globalThis.Deno ? Deno.env.get(k) : process.env[k]);
 
+// Llave de servicio: la clásica (JWT) o la nueva "sb_secret_…", según cómo esté el proyecto
+function llaveServicio() {
+  if (env('SUPABASE_SERVICE_ROLE_KEY')) return env('SUPABASE_SERVICE_ROLE_KEY');
+  try {
+    const llaves = JSON.parse(env('SUPABASE_SECRET_KEYS') || '{}');
+    return llaves.default || Object.values(llaves)[0];
+  } catch { return undefined; }
+}
+
 async function db(ruta, opciones = {}) {
+  const llave = llaveServicio();
   const r = await fetch(env('SUPABASE_URL') + '/rest/v1/' + ruta, {
     ...opciones,
     headers: {
-      apikey: env('SUPABASE_SERVICE_ROLE_KEY'), Authorization: 'Bearer ' + env('SUPABASE_SERVICE_ROLE_KEY'),
+      apikey: llave, ...(llave && llave.startsWith('eyJ') ? { Authorization: 'Bearer ' + llave } : {}),
       'Content-Type': 'application/json', Prefer: 'return=representation', ...(opciones.headers || {})
     }
   });
