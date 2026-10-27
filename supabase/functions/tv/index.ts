@@ -72,6 +72,8 @@ export async function conectar(token, nombre = "Rockola Olii's Beer") {
       estado.videoId = datos.videoId || null;
       if (datos.state != null) estado.estado = Number(datos.state);
       estado.tiempo = Number(datos.currentTime || 0);
+      // La fila real del TV (lo que está sonando y lo que sigue)
+      if (datos.mdxExpandedReceiverVideoIdList) estado.fila = String(datos.mdxExpandedReceiverVideoIdList).split(',');
     }
     if (ev === 'onStateChange' && datos && datos.state != null) estado.estado = Number(datos.state);
     if (ev === 'onVolumeChanged' && datos) estado.volumen = Number(datos.volume);
@@ -241,8 +243,11 @@ async function sincronizar() {
     // Si el TV ya pasó del video tras el cual se mandó un pedido y ese pedido no sonó,
     // se perdió de la fila (alguien la borró en el TV): se vuelve a mandar
     const enFila = new Set(vivos.filter((p) => p.estado === 'cola').map((p) => p.video_id));
-    const perdidos = vivos.filter((p) => p.estado === 'cola' && p.tras_video && p.tras_video !== actual &&
-      !enFila.has(p.tras_video) && !terminados.length);
+    const filaTV = estado.fila ? new Set(estado.fila) : null;
+    // Si el TV contó su fila, lo que falta en ella se perdió; si no, se deduce por el video de adelante
+    const perdidos = vivos.filter((p) => p.estado === 'cola' && !nuevos.some((n) => n.id === p.id) && (filaTV
+      ? !filaTV.has(p.video_id)
+      : p.tras_video && p.tras_video !== actual && !enFila.has(p.tras_video) && !terminados.length));
     let previo = actual;
     for (const p of perdidos) {
       await orden(activo ? 'addVideo' : 'setPlaylist', { videoId: p.video_id });
