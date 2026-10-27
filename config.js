@@ -15,6 +15,8 @@ window.ROCKOLA = {
   // Supabase → Project Settings → API (la URL y la clave "anon" o "publishable")
   supabaseUrl: "https://gwqadityhvgadixcxviu.supabase.co",
   supabaseKey: "sb_publishable_lfbK-5NP_kHWw7QZaJKvCw_eyx2yJFX",
+  // Llave "anon" clásica (también pública): la pide la función del TV para dejarla llamar
+  supabaseAnon: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3cWFkaXR5aHZnYWRpeGN4dml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3OTQ1NDUsImV4cCI6MjEwODM3MDU0NX0.WDG3GLnTV0TtabI4tyfA91rgI4k3oBNLyy0fMSGZxKg",
 
   // Google Cloud → YouTube Data API v3 → Credenciales → Clave de API
   youtubeKey: "AIzaSyCsPwdfn1wzDvmbfPQ-PYuy3-oipDkTkls",

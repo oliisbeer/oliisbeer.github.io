@@ -251,7 +251,7 @@
     async tv(accion, datos = {}) {
       const r = await fetch(C.supabaseUrl.replace(/\/$/, '') + '/functions/v1/tv', {
         method: 'POST',
-        headers: { apikey: C.supabaseKey, 'Content-Type': 'application/json' },
+        headers: { apikey: C.supabaseKey, Authorization: 'Bearer ' + C.supabaseAnon, 'Content-Type': 'application/json' },
         body: JSON.stringify({ accion, ...datos })
       });
       let d = {};

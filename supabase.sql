@@ -127,6 +127,6 @@ select cron.schedule('rockola-tv', '30 seconds', $$
   select net.http_post(
     url := 'https://gwqadityhvgadixcxviu.supabase.co/functions/v1/tv',
     body := '{"accion":"sincronizar"}'::jsonb,
-    headers := '{"Content-Type":"application/json"}'::jsonb
+    headers := '{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3cWFkaXR5aHZnYWRpeGN4dml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3OTQ1NDUsImV4cCI6MjEwODM3MDU0NX0.WDG3GLnTV0TtabI4tyfA91rgI4k3oBNLyy0fMSGZxKg"}'::jsonb
   );
 $$);
