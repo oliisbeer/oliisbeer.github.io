@@ -240,11 +240,15 @@ async function sincronizar() {
     if (terminados.length) await patch('pedidos?id=in.(' + terminados + ')', { estado: 'hecho' });
     // Si el TV ya pasó del video tras el cual se mandó un pedido y ese pedido no sonó,
     // se perdió de la fila (alguien la borró en el TV): se vuelve a mandar
-    const perdidos = vivos.filter((p) => p.estado === 'cola' && p.tras_video && p.tras_video !== actual && !terminados.length);
+    const enFila = new Set(vivos.filter((p) => p.estado === 'cola').map((p) => p.video_id));
+    const perdidos = vivos.filter((p) => p.estado === 'cola' && p.tras_video && p.tras_video !== actual &&
+      !enFila.has(p.tras_video) && !terminados.length);
+    let previo = actual;
     for (const p of perdidos) {
       await orden(activo ? 'addVideo' : 'setPlaylist', { videoId: p.video_id });
       activo = true;
-      await patch('pedidos?id=eq.' + p.id, { tras_video: actual });
+      await patch('pedidos?id=eq.' + p.id, { tras_video: previo });
+      previo = p.video_id;
     }
   }
 
