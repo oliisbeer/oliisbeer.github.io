@@ -188,13 +188,21 @@ async function sincronizar() {
   if (!con) return { vinculado: false };
   const { tv, estado, orden } = con;
   let actual = estado.videoId;
-  let activo = ACTIVO.includes(estado.estado) && !!actual;
-  // Si el TV no contó qué suena, se usa lo que la rockola mandó: si hay un pedido sonando o en la
-  // fila de los últimos 15 minutos, el TV está ocupado y lo nuevo va a la fila (no lo interrumpe)
-  if (!activo && estado.estado == null) {
-    const recientes = await db('pedidos?select=id&estado=in.(cola,sonando)&enviado_en=gt.' +
-      encodeURIComponent(new Date(Date.now() - 15 * 60e3).toISOString()) + '&limit=1');
-    if (recientes && recientes.length) activo = true;
+  // YouTube cerrado en el TV: no se manda nada (se perdería); los pedidos esperan
+  if (!estado.prendido) return { vinculado: true, nombre: tv.nombre, prendido: false, mandados: 0 };
+  // Hay un video cargado (sonando, en pausa o cargando) y no ha terminado
+  let activo = !!actual && estado.estado !== 0;
+  // Algo que se mandó hace menos de 20 s puede no haber arrancado aún: el TV cuenta como ocupado
+  const hace20 = encodeURIComponent(new Date(Date.now() - 20e3).toISOString());
+  if (!activo) {
+    const recien = await db('pedidos?select=id&estado=in.(cola,sonando)&enviado_en=gt.' + hace20 + '&limit=1');
+    if (recien && recien.length) activo = true;
+  }
+  if (!activo) {
+    // El TV está quieto: lo que se mandó ya sonó o se perdió. Lo que sonaba termina y
+    // lo que seguía en la fila se vuelve a mandar, en orden
+    await patch('pedidos?estado=eq.sonando&enviado_en=lt.' + hace20, { estado: 'hecho' });
+    await patch('pedidos?estado=eq.cola&enviado_en=lt.' + hace20, { enviado_en: null, tras_video: null });
   }
 
   // 1. Pedidos que aún no se han mandado: se "reservan" primero para no mandarlos dos veces
