@@ -72,6 +72,7 @@ export async function conectar(token, nombre = "Rockola Olii's Beer") {
       estado.videoId = datos.videoId || null;
       if (datos.state != null) estado.estado = Number(datos.state);
       estado.tiempo = Number(datos.currentTime || 0);
+      estado.duracion = Number(datos.duration || 0);
       // La fila real del TV (lo que está sonando y lo que sigue)
       if (datos.mdxExpandedReceiverVideoIdList) estado.fila = String(datos.mdxExpandedReceiverVideoIdList).split(',');
     }
@@ -274,7 +275,18 @@ async function ordenDelBar(accion, cuerpo) {
   const con = await abrirTV();
   if (!con) throw new Error('Primero vincula el TV');
   const { estado, orden } = con;
-  if (accion === 'saltar') await orden('next');
+  if (accion === 'saltar') {
+    // Saltar = poner como nueva fila lo que seguía (la orden "next" no siempre la cumple el TV)
+    const fila = estado.fila || [];
+    const resto = fila.slice(fila.indexOf(estado.videoId) + 1);
+    if (estado.videoId && resto.length) {
+      await orden('setPlaylist', { videoId: resto[0], videoIds: resto.join(','), currentIndex: 0, currentTime: 0 });
+    } else if (estado.duracion > 5) {
+      // Era la última: se adelanta al final para que YouTube siga con su música automática
+      await orden('seekTo', { newTime: Math.floor(estado.duracion - 2) });
+    } else await orden('next');
+    return sincronizar();
+  }
   if (accion === 'pausa') await orden('pause');
   if (accion === 'seguir') await orden('play');
   if (accion === 'volumen_mas' || accion === 'volumen_menos') {
