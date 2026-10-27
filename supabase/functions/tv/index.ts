@@ -184,76 +184,60 @@ async function tituloDe(videoId) {
   } catch { return ''; }
 }
 
-// ---------- Mandar los pedidos nuevos y llevar la cuenta de lo que suena ----------
+// ---------- Mandar los pedidos y llevar la cuenta de lo que suena ----------
 async function sincronizar() {
   const con = await abrirTV();
   if (!con) return { vinculado: false };
   const { tv, estado, orden } = con;
-  let actual = estado.videoId;
   // YouTube cerrado en el TV: no se manda nada (se perdería); los pedidos esperan
   if (!estado.prendido) return { vinculado: true, nombre: tv.nombre, prendido: false, mandados: 0 };
-  // Hay un video cargado (sonando, en pausa o cargando) y no ha terminado
-  let activo = !!actual && estado.estado !== 0;
-  // Algo que se mandó hace menos de 20 s puede no haber arrancado aún: el TV cuenta como ocupado
-  const hace20 = encodeURIComponent(new Date(Date.now() - 20e3).toISOString());
-  if (!activo) {
-    const recien = await db('pedidos?select=id&estado=in.(cola,sonando)&enviado_en=gt.' + hace20 + '&limit=1');
-    if (recien && recien.length) activo = true;
-  }
-  if (!activo) {
-    // El TV está quieto: lo que se mandó ya sonó o se perdió. Lo que sonaba termina y
-    // lo que seguía en la fila se vuelve a mandar, en orden
-    await patch('pedidos?estado=eq.sonando&enviado_en=lt.' + hace20, { estado: 'hecho' });
-    await patch('pedidos?estado=eq.cola&enviado_en=lt.' + hace20, { enviado_en: null, tras_video: null });
-  }
+  const actual = estado.videoId;
+  const ahoraISO = new Date().toISOString();
+  const hace = (p, ms) => p.enviado_en && Date.now() - Date.parse(p.enviado_en) < ms;
 
-  // 1. Pedidos que aún no se han mandado: se "reservan" primero para no mandarlos dos veces
-  const nuevos = (await patch('pedidos?estado=eq.cola&enviado_en=is.null', { enviado_en: new Date().toISOString() }) || [])
-    .sort((a, b) => a.id - b.id);
-  let ultimoMandado = actual;
-  for (const p of nuevos) {
-    if (!activo) {
-      // El TV no está sonando nada: este pedido suena ya
-      await orden('setPlaylist', { videoId: p.video_id, currentTime: 0, currentIndex: 0 });
-      actual = p.video_id;
-      activo = true;
-    } else {
-      await orden('addVideo', { videoId: p.video_id });
-      // Se anota detrás de qué video quedó, para notar si alguien borra la fila en el TV
-      await patch('pedidos?id=eq.' + p.id, { tras_video: ultimoMandado });
-    }
-    ultimoMandado = p.video_id;
-  }
+  const pedidos = (await db('pedidos?select=id,video_id,titulo,mesa,estado,enviado_en&estado=in.(cola,sonando,saltado)' +
+    '&creado=gt.' + encodeURIComponent(new Date(Date.now() - 12 * 3600e3).toISOString()) + '&order=id.asc')) || [];
+  const enviados = pedidos.filter((p) => p.enviado_en);
+  const vivos = pedidos.filter((p) => p.estado !== 'saltado');
+  // Algo mandado hace menos de 20 s puede no haber arrancado: no se vuelve a mandar todavía
+  const recien = vivos.some((p) => hace(p, 20e3));
 
-  // 2. Qué pedido está sonando y cuáles ya sonaron
-  const enviados = (await db('pedidos?select=id,video_id,titulo,mesa,estado,tras_video&enviado_en=not.is.null' +
-    '&estado=in.(cola,sonando,saltado)&creado=gt.' + encodeURIComponent(new Date(Date.now() - 12 * 3600e3).toISOString()) +
-    '&order=id.asc')) || [];
-  const vivos = enviados.filter((p) => p.estado !== 'saltado');
-  const i = actual ? vivos.findIndex((p) => p.video_id === actual) : -1;
-  let sonando = null;
-  if (i >= 0) {
-    sonando = vivos[i];
+  // 1. Qué pedido está sonando y cuáles ya sonaron
+  const i = actual ? vivos.findIndex((p) => p.enviado_en && p.video_id === actual) : -1;
+  let sonando = i >= 0 ? vivos[i] : null;
+  if (sonando) {
     if (sonando.estado !== 'sonando') await patch('pedidos?id=eq.' + sonando.id, { estado: 'sonando' });
-    const pasados = vivos.slice(0, i).map((p) => p.id);
+    const pasados = vivos.slice(0, i).filter((p) => p.enviado_en).map((p) => p.id);
     if (pasados.length) await patch('pedidos?id=in.(' + pasados + ')', { estado: 'hecho' });
-  } else {
+  } else if (!recien) {
     const terminados = vivos.filter((p) => p.estado === 'sonando').map((p) => p.id);
     if (terminados.length) await patch('pedidos?id=in.(' + terminados + ')', { estado: 'hecho' });
-    // Si el TV ya pasó del video tras el cual se mandó un pedido y ese pedido no sonó,
-    // se perdió de la fila (alguien la borró en el TV): se vuelve a mandar
-    const enFila = new Set(vivos.filter((p) => p.estado === 'cola').map((p) => p.video_id));
-    const filaTV = estado.fila ? new Set(estado.fila) : null;
-    // Si el TV contó su fila, lo que falta en ella se perdió; si no, se deduce por el video de adelante
-    const perdidos = vivos.filter((p) => p.estado === 'cola' && !nuevos.some((n) => n.id === p.id) && (filaTV
-      ? !filaTV.has(p.video_id)
-      : p.tras_video && p.tras_video !== actual && !enFila.has(p.tras_video) && !terminados.length));
-    let previo = actual;
-    for (const p of perdidos) {
-      await orden(activo ? 'addVideo' : 'setPlaylist', { videoId: p.video_id });
-      activo = true;
-      await patch('pedidos?id=eq.' + p.id, { tras_video: previo });
-      previo = p.video_id;
+  }
+  const pendientes = vivos.filter((p, k) => p.estado === 'cola' && (!sonando || k > i));
+
+  // 2. Mandar los pedidos al TV
+  let mandados = 0;
+  if (pendientes.length && !sonando && !recien) {
+    // Suena algo que nadie pidió (música automática o lo que quedó en YouTube) o nada:
+    // los pedidos entran ya, en orden, como la nueva fila del TV
+    const ids = pendientes.map((p) => p.video_id);
+    await orden('setPlaylist', { videoId: ids[0], videoIds: ids.join(','), currentIndex: 0, currentTime: 0 });
+    await patch('pedidos?id=in.(' + pendientes.map((p) => p.id) + ')', { enviado_en: ahoraISO });
+    await patch('pedidos?id=eq.' + pendientes[0].id, { estado: 'sonando' });
+    sonando = pendientes[0];
+    mandados = ids.length;
+  } else if (pendientes.length && sonando) {
+    // Suena un pedido: lo nuevo, y lo que se haya perdido de la fila del TV, va detrás
+    const fila = estado.fila ? new Set(estado.fila) : null;
+    for (const p of pendientes) {
+      if (p.enviado_en && (!fila || fila.has(p.video_id) || hace(p, 20e3))) continue;
+      if (!p.enviado_en) {
+        // Se reserva antes de mandarlo, por si otra revisión corre al mismo tiempo
+        const tomado = await patch('pedidos?id=eq.' + p.id + '&enviado_en=is.null', { enviado_en: ahoraISO });
+        if (!tomado || !tomado.length) continue;
+      } else await patch('pedidos?id=eq.' + p.id, { enviado_en: ahoraISO });
+      await orden('addVideo', { videoId: p.video_id });
+      mandados++;
     }
   }
 
@@ -277,7 +261,7 @@ async function sincronizar() {
     body: JSON.stringify({ id: 1, ...info, actualizado: new Date().toISOString() })
   });
 
-  return { vinculado: true, nombre: tv.nombre, prendido: estado.prendido, estado: estado.estado, volumen: estado.volumen, sonando: actual, eventos: estado.eventos, mandados: nuevos.length };
+  return { vinculado: true, nombre: tv.nombre, prendido: estado.prendido, estado: estado.estado, volumen: estado.volumen, sonando: actual, fila: estado.fila, mandados };
 }
 
 // ---------- Órdenes del panel del bar ----------
