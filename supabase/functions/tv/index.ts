@@ -38,7 +38,7 @@ function leerEventos(texto) {
     if (!largo) break;
     const trozo = texto.slice(fin + 1, fin + 1 + largo);
     i = fin + 1 + largo;
-    try { for (const [, ev] of JSON.parse(trozo)) eventos.push(ev); } catch { /* trozo incompleto */ }
+    try { for (const [id, ev] of JSON.parse(trozo)) eventos.push([id, ev]); } catch { /* trozo incompleto */ }
   }
   return eventos;
 }
@@ -61,9 +61,10 @@ export async function conectar(token, nombre = "Rockola Olii's Beer") {
     e.vencido = r.status === 401 || r.status === 403 || r.status === 410;
     throw e;
   }
-  let sid = null, gsession = null;
+  let sid = null, gsession = null, ultimoId = 0;
   const estado = { videoId: null, estado: null, tiempo: 0, volumen: null, prendido: false, eventos: [] };
-  for (const [ev, datos] of leerEventos(texto)) {
+  const anotar = (lista) => { for (const [id, [ev, datos]] of lista) {
+    ultimoId = Math.max(ultimoId, id);
     estado.eventos.push(ev);
     if (ev === 'c') sid = datos;
     if (ev === 'S') gsession = datos;
@@ -77,7 +78,8 @@ export async function conectar(token, nombre = "Rockola Olii's Beer") {
     if (ev === 'loungeStatus' && datos) {
       try { estado.prendido = JSON.parse(datos.devices).some((d) => d.type === 'LOUNGE_SCREEN'); } catch { /* sin datos */ }
     }
-  }
+  } };
+  anotar(leerEventos(texto));
   if (!sid || !gsession) throw new Error('No se pudo abrir la conexión con el TV');
 
   let rid = 2, ofs = 0;
@@ -87,6 +89,31 @@ export async function conectar(token, nombre = "Rockola Olii's Beer") {
     const q = new URLSearchParams({ SID: sid, gsessionid: gsession, RID: String(rid++), VER: '8', CVER: '1', auth_failure_option: 'send_error' });
     const resp = await fetch(LOUNGE + '/bc/bind?' + q, { method: 'POST', headers: { 'X-YouTube-LoungeId-Token': token }, body: form(datos) });
     if (!resp.ok) throw new Error('El TV no recibió la orden "' + comando + '" (' + resp.status + ')');
+  }
+  // Al conectarse, el TV no siempre cuenta qué suena: se le pregunta y se escucha su respuesta un momento
+  async function escuchar(ms) {
+    const q = new URLSearchParams({ SID: sid, gsessionid: gsession, RID: 'rpc', CI: '0', TYPE: 'xmlhttp', AID: String(ultimoId), VER: '8', CVER: '1', loungeIdToken: token });
+    const corte = new AbortController();
+    const reloj = setTimeout(() => corte.abort(), ms);
+    let recibido = '';
+    try {
+      const resp = await fetch(LOUNGE + '/bc/bind?' + q, { headers: { 'X-YouTube-LoungeId-Token': token }, signal: corte.signal });
+      const lector = resp.body.getReader();
+      const dec = new TextDecoder();
+      for (;;) {
+        const { done, value } = await lector.read();
+        if (done) break;
+        recibido += dec.decode(value, { stream: true });
+        if (/"nowPlaying"/.test(recibido) && /"onVolumeChanged"/.test(recibido)) break;
+      }
+      corte.abort();
+    } catch { /* se acabó el tiempo de espera */ }
+    clearTimeout(reloj);
+    anotar(leerEventos(recibido));
+  }
+  if (!estado.videoId) {
+    try { await orden('getNowPlaying'); await orden('getVolume'); } catch { /* el TV puede no entenderlas */ }
+    await escuchar(3500);
   }
   return { estado, orden };
 }
@@ -162,6 +189,13 @@ async function sincronizar() {
   const { tv, estado, orden } = con;
   let actual = estado.videoId;
   let activo = ACTIVO.includes(estado.estado) && !!actual;
+  // Si el TV no contó qué suena, se usa lo que la rockola mandó: si hay un pedido sonando o en la
+  // fila de los últimos 15 minutos, el TV está ocupado y lo nuevo va a la fila (no lo interrumpe)
+  if (!activo && estado.estado == null) {
+    const recientes = await db('pedidos?select=id&estado=in.(cola,sonando)&enviado_en=gt.' +
+      encodeURIComponent(new Date(Date.now() - 15 * 60e3).toISOString()) + '&limit=1');
+    if (recientes && recientes.length) activo = true;
+  }
 
   // 1. Pedidos que aún no se han mandado: se "reservan" primero para no mandarlos dos veces
   const nuevos = (await patch('pedidos?estado=eq.cola&enviado_en=is.null', { enviado_en: new Date().toISOString() }) || [])
@@ -226,7 +260,7 @@ async function sincronizar() {
     body: JSON.stringify({ id: 1, ...info, actualizado: new Date().toISOString() })
   });
 
-  return { vinculado: true, nombre: tv.nombre, prendido: estado.prendido, estado: estado.estado, volumen: estado.volumen, mandados: nuevos.length };
+  return { vinculado: true, nombre: tv.nombre, prendido: estado.prendido, estado: estado.estado, volumen: estado.volumen, sonando: actual, eventos: estado.eventos, mandados: nuevos.length };
 }
 
 // ---------- Órdenes del panel del bar ----------
