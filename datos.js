@@ -4,6 +4,8 @@
   // ?demo en el link fuerza el modo prueba (para mostrarla sin tocar la cola real)
   const demo = !C.supabaseUrl || !C.supabaseKey || new URLSearchParams(location.search).has('demo');
   const CLAVE_DEMO = 'rockola-demo-pedidos';
+  // La música suena en la app de YouTube del TV (función "tv" de Supabase) y no en bar.html
+  const youtubeTV = C.pantalla === 'youtube-tv' && !demo;
 
   // Catálogo pequeño para probar sin clave de YouTube
   const CATALOGO_DEMO = [
@@ -87,6 +89,7 @@
 
   const Rockola = {
     demo,
+    youtubeTV,
     sinYouTube: !C.youtubeKey,
 
     miniatura: id => 'https://i.ytimg.com/vi/' + id + '/mqdefault.jpg',
@@ -166,6 +169,8 @@
         guardarDemo(lista);
       } else {
         await rest('pedidos', { method: 'POST', body: JSON.stringify(pedido) });
+        // Que la canción salga ya para la fila del TV (sin esperar la revisión automática)
+        if (youtubeTV) Rockola.tv('sincronizar').catch(() => {});
       }
       return (await Rockola.cola()).filter(p => p.estado === 'cola').length;
     },
@@ -209,6 +214,7 @@
     // ---- Panel del administrador → pantalla del TV ----
     // El panel deja una orden (saltar, pausa…) y el TV la recoge y la cumple
     async comandar(accion, clave) {
+      if (youtubeTV) return Rockola.tv(accion, { clave });
       if (demo) {
         const lista = leerLS('rockola-demo-comandos', []);
         lista.push({ id: Date.now(), accion });
@@ -239,6 +245,19 @@
       if (demo) return leerLS('rockola-demo-ahora', null);
       const filas = await rest('ahora?select=video_id,titulo,mesa,automatica');
       return filas && filas.length ? filas[0] : null;
+    },
+
+    // ---- App de YouTube del TV (función "tv" de Supabase) ----
+    async tv(accion, datos = {}) {
+      const r = await fetch(C.supabaseUrl.replace(/\/$/, '') + '/functions/v1/tv', {
+        method: 'POST',
+        headers: { apikey: C.supabaseKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accion, ...datos })
+      });
+      let d = {};
+      try { d = await r.json(); } catch {}
+      if (!r.ok || d.error) throw new Error(d.error || 'No se pudo hablar con el TV (' + r.status + ')');
+      return d;
     },
 
     async verificarClave(clave) {

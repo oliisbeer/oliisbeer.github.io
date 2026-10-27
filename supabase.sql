@@ -104,3 +104,29 @@ $$;
 revoke insert, update, delete on comandos, ahora from anon, authenticated;
 grant execute on function bar_comando(text, text) to anon;
 grant execute on function bar_ahora(text, text, text, int, boolean) to anon;
+
+-- ============================================================
+-- Modo "YouTube del TV": los pedidos se mandan a la app de YouTube del televisor
+-- (función supabase/functions/tv). Correr esto una vez.
+-- ============================================================
+alter table pedidos add column if not exists enviado_en timestamptz;  -- cuándo se mandó a la fila del TV
+alter table pedidos add column if not exists tras_video text;         -- detrás de qué video quedó en la fila
+
+-- El TV vinculado (solo lo lee la función, con la llave de servicio)
+create table if not exists tv (
+  id int primary key default 1 check (id = 1),
+  screen_id text, token text, nombre text, expira bigint
+);
+alter table tv enable row level security;
+revoke all on tv from anon, authenticated;
+
+-- Cada 30 segundos se revisa qué suena en el TV, aunque nadie tenga el panel abierto
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+select cron.schedule('rockola-tv', '30 seconds', $$
+  select net.http_post(
+    url := 'https://gwqadityhvgadixcxviu.supabase.co/functions/v1/tv',
+    body := '{"accion":"sincronizar"}'::jsonb,
+    headers := '{"Content-Type":"application/json"}'::jsonb
+  );
+$$);

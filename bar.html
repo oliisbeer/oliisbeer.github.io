@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=DM+Serif+Display&family=Oswald:wght@400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css?v=8">
+<link rel="stylesheet" href="estilos.css?v=9">
 <style>
   /* Pantalla del TV: solo el video. Todo se maneja desde admin.html */
   html, body { height: 100%; }
@@ -89,8 +89,8 @@
     <kbd>F</kbd> pantalla completa.</p>
 </div>
 
-<script src="config.js?v=8"></script>
-<script src="datos.js?v=8"></script>
+<script src="config.js?v=9"></script>
+<script src="datos.js?v=9"></script>
 <script>
   const C = window.ROCKOLA, R = window.Rockola;
   const $ = s => document.querySelector(s);
@@ -114,6 +114,13 @@
     $('#clave').hidden = false;
   }
   if (C.instagram) $('#ig').textContent = '📸 Síguenos en Instagram: @' + C.instagram;
+  // Con la música en la app de YouTube del TV, esta pantalla no se usa (sonarían dos a la vez)
+  if (R.youtubeTV) {
+    $('#clave').hidden = true;
+    $('#arrancar').parentElement.hidden = true;
+    $('.inicio .nota').innerHTML = 'La rockola ahora suena en la <b>app de YouTube del televisor</b>.<br>' +
+      'Abre YouTube en el TV y maneja todo desde el <a href="admin.html">panel del administrador</a>.';
+  }
   $('#clave').value = clave;
 
   // ---- Reproductor de YouTube ----

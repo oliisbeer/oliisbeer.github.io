@@ -6,6 +6,12 @@ window.ROCKOLA = {
   mesas: 5,
   instagram: "oliisbeercerveceria",
 
+  // Dónde suena la música:
+  //  "youtube-tv" → en la app de YouTube del televisor (con la cuenta Premium del bar).
+  //                 Se vincula una vez desde el panel con el código del TV.
+  //  "navegador"  → en la página bar.html abierta en un computador conectado al TV.
+  pantalla: "youtube-tv",
+
   // Supabase → Project Settings → API (la URL y la clave "anon" o "publishable")
   supabaseUrl: "https://gwqadityhvgadixcxviu.supabase.co",
   supabaseKey: "sb_publishable_lfbK-5NP_kHWw7QZaJKvCw_eyx2yJFX",
